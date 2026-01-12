@@ -59,28 +59,42 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
     }
   };
 
-  const handleStripePayment = async () => {
-    setLoading('stripe');
-    try {
-      // Stripe integration - will call edge function
-      toast.info('Integração Stripe em breve!', {
-        description: `Valor: ${formattedPrice}${periodLabel}`,
-      });
-      
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      // TODO: Implement Stripe edge function
-      // const response = await supabase.functions.invoke('create-stripe-checkout', {
-      //   body: { amount: price, plan, billingPeriod }
-      // });
-      // window.location.href = response.data.url;
-      
-    } catch (error) {
-      toast.error('Pagamento falhou. Tente novamente.');
-    } finally {
-      setLoading(null);
+  const handlePaypalPayment = async () => {
+  setLoading('paypal');
+
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          amount: price,
+        }),
+      }
+    );
+
+    const data = await res.json();
+
+    const approvalUrl = data.links.find(
+      (link: any) => link.rel === 'approve'
+    )?.href;
+
+    if (approvalUrl) {
+      window.location.href = approvalUrl;
+    } else {
+      throw new Error('PayPal URL não encontrada');
     }
-  };
+  } catch (err) {
+    toast.error('Erro ao iniciar pagamento PayPal');
+  } finally {
+    setLoading(null);
+  }
+};
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

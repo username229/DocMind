@@ -106,8 +106,8 @@ const plans = {
     {
       name: 'Pro',
       nameEn: 'Pro',
-      priceMZN: 15000,
-      originalPriceMZN: 18000,
+      priceMZN: 120,
+      originalPriceMZN: 120,
       description: 'Para estudantes e profissionais',
       descriptionEn: 'For students and professionals',
       features: [

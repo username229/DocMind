@@ -59,41 +59,48 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
   };
 
   // ---------- PayPal ----------
-  const handlePaypalPayment = async () => {
-    setLoading('paypal');
+ // IDs fixos dos pacotes PayPal
+const packageIds: Record<string, string> = {
+  standard: 'QA9ZBWU6F8KUE',
+  pro: 'SEU_ID_PRO_AQUI', // substitua pelo ID real do Pro
+};
 
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            amount: price,
-            plan, 
-            billingPeriod,
-          }),
-        }
-      );
+const handlePaypalPayment = async () => {
+  setLoading('paypal');
+  try {
+    const packageId = packageIds[plan]; // seleciona ID baseado no plano
 
-      const data = await res.json();
-
-      const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
-
-      if (approvalUrl) {
-        window.location.href = approvalUrl;
-      } else {
-        throw new Error('PayPal URL não encontrada');
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          amount: price,
+          packageId, // envia pacote para a função
+        }),
       }
-    } catch (err) {
-      toast.error('Erro ao iniciar pagamento PayPal');
-    } finally {
-      setLoading(null);
+    );
+
+    const data = await res.json();
+
+    const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
+
+    if (approvalUrl) {
+      window.location.href = approvalUrl; // redireciona para PayPal
+    } else {
+      throw new Error('PayPal URL não encontrada');
     }
-  };
+  } catch (err) {
+    toast.error('Erro ao iniciar pagamento PayPal');
+    console.error(err);
+  } finally {
+    setLoading(null);
+  }
+};
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

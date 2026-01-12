@@ -71,8 +71,8 @@ export const currencies: Currency[] = [
 // Base prices in MZN (Mozambican Metical)
 export const basePricesMZN = {
   free: 0,
-  standard: 850,
-  pro: 1500,
+  standard: 85,
+  pro: 120,
 };
 
 // Convert MZN prices to other currencies

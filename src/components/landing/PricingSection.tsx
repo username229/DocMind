@@ -27,7 +27,7 @@ const plans = {
     {
       name: 'Standard',
       nameEn: 'Standard',
-      priceMZN: 850,
+      priceMZN: 85,
       description: 'Todas as funcionalidades essenciais',
       descriptionEn: 'All essential features',
       features: [
@@ -46,7 +46,7 @@ const plans = {
     {
       name: 'Pro',
       nameEn: 'Pro',
-      priceMZN: 1500,
+      priceMZN: 120,
       description: 'Para estudantes e profissionais',
       descriptionEn: 'For students and professionals',
       features: [
@@ -85,7 +85,7 @@ const plans = {
     {
       name: 'Standard',
       nameEn: 'Standard',
-      priceMZN: 8500,
+      priceMZN: 85,
       originalPriceMZN: 10200,
       description: 'Todas as funcionalidades essenciais',
       descriptionEn: 'All essential features',

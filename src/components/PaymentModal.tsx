@@ -20,12 +20,12 @@ interface PaymentModalProps {
 
 const planPrices = {
   monthly: {
-    standard: 850,
-    pro: 1500,
+    standard: 85,
+    pro: 120,
   },
   yearly: {
-    standard: 8500,
-    pro: 15000,
+    standard: 1020,
+    pro: 1440,
   },
 };
 
@@ -45,7 +45,7 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
         description: `Valor: ${formattedPrice}${periodLabel}`,
       });
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 120));
       
       // TODO: Implement M-Pesa edge function
       // const response = await supabase.functions.invoke('create-mpesa-payment', {
@@ -67,7 +67,7 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
         description: `Valor: ${formattedPrice}${periodLabel}`,
       });
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1200));
       
       // TODO: Implement Stripe edge function
       // const response = await supabase.functions.invoke('create-stripe-checkout', {

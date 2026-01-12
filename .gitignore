@@ -9,6 +9,10 @@ dist/
 .env.*
 !.env.example
 
+# Supabase (optional)
+supabase/.env
+supabase/.temp
+
 # Logs
 logs
 *.log

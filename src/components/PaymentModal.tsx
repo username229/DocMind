@@ -62,7 +62,7 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
  // IDs fixos dos pacotes PayPal
 const packageIds: Record<string, string> = {
   standard: 'QA9ZBWU6F8KUE',
-  pro: 'SEU_ID_PRO_AQUI', // substitua pelo ID real do Pro
+  pro: 'LGPRKFFJ7ADPC', // substitua pelo ID real do Pro
 };
 
 const handlePaypalPayment = async () => {

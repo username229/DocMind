@@ -37,21 +37,20 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
   const formattedPrice = formatPriceFromMZN(price);
   const periodLabel = billingPeriod === 'monthly' ? '/mês' : '/ano';
 
+  // ---------- M-Pesa ----------
   const handleMpesaPayment = async () => {
     setLoading('mpesa');
     try {
-      // M-Pesa integration - will call edge function
       toast.info('Integração M-Pesa em breve!', {
         description: `Valor: ${formattedPrice}${periodLabel}`,
       });
-      
+
       await new Promise(resolve => setTimeout(resolve, 120));
-      
-      // TODO: Implement M-Pesa edge function
+
+      // TODO: Implementar função edge do Supabase para M-Pesa
       // const response = await supabase.functions.invoke('create-mpesa-payment', {
       //   body: { amount: price, plan, billingPeriod }
       // });
-      
     } catch (error) {
       toast.error('Pagamento falhou. Tente novamente.');
     } finally {
@@ -59,42 +58,42 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
     }
   };
 
+  // ---------- PayPal ----------
   const handlePaypalPayment = async () => {
-  setLoading('paypal');
+    setLoading('paypal');
 
-  try {
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          amount: price,
-        }),
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            amount: price,
+            plan, 
+            billingPeriod,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
+
+      if (approvalUrl) {
+        window.location.href = approvalUrl;
+      } else {
+        throw new Error('PayPal URL não encontrada');
       }
-    );
-
-    const data = await res.json();
-
-    const approvalUrl = data.links.find(
-      (link: any) => link.rel === 'approve'
-    )?.href;
-
-    if (approvalUrl) {
-      window.location.href = approvalUrl;
-    } else {
-      throw new Error('PayPal URL não encontrada');
+    } catch (err) {
+      toast.error('Erro ao iniciar pagamento PayPal');
+    } finally {
+      setLoading(null);
     }
-  } catch (err) {
-    toast.error('Erro ao iniciar pagamento PayPal');
-  } finally {
-    setLoading(null);
-  }
-};
-
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -132,24 +131,24 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
             </div>
           </Button>
 
-          {/* Stripe */}
+          {/* PayPal */}
           <Button
             variant="outline"
             className="w-full h-16 justify-start gap-4"
-            onClick={handleStripePayment}
+            onClick={handlePaypalPayment}
             disabled={loading !== null}
           >
-            {loading === 'stripe' ? (
+            {loading === 'paypal' ? (
               <Loader2 className="w-6 h-6 animate-spin" />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-700 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-lg bg-yellow-400 flex items-center justify-center font-bold">
+                PP
               </div>
             )}
             <div className="text-left">
-              <div className="font-semibold">Pagar com Cartão</div>
+              <div className="font-semibold">Pagar com PayPal</div>
               <div className="text-xs text-muted-foreground">
-                Visa, Mastercard, American Express
+                Visa, Mastercard ou saldo PayPal
               </div>
             </div>
           </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, FileText, Lightbulb, Target, Wand2, Zap, Check, Sparkles, Clock, Shield, Crown, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,15 +6,86 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageCurrencySelector } from '@/components/LanguageCurrencySelector';
 import { PaymentModal } from '@/components/PaymentModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, signOut } = useAuth();
   const { t, formatPriceFromMZN, basePricesMZN } = useLanguage();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'standard' | 'pro'>('pro');
+  const [currentPlan, setCurrentPlan] = useState<'free' | 'standard' | 'pro'>('free');
 
   const standardPrice = formatPriceFromMZN(basePricesMZN.standard);
   const proPrice = formatPriceFromMZN(basePricesMZN.pro);
+
+  const displayName = useMemo(() => {
+    if (!user) return '';
+    const name =
+      (user.user_metadata?.full_name as string | undefined) ||
+      (user.user_metadata?.name as string | undefined) ||
+      user.email?.split('@')[0];
+    return name || 'Usuário';
+  }, [user]);
+
+  const planConfig = useMemo(() => ({
+    free: {
+      label: 'Grátis',
+      description: 'Ideal para experimentar',
+      features: [
+        '2 análises de IA no total',
+        '1 documento',
+        'Upload até 5 páginas',
+        'IA básica: GPT-4o mini',
+      ],
+    },
+    standard: {
+      label: 'Standard',
+      description: 'Para produtividade diária',
+      features: [
+        'Documentos ilimitados',
+        'Resumo, explicação e sugestões',
+        'Upload até 50 páginas',
+        'IA avançada: GPT-4o mini e Gemini 1.5 Flash',
+      ],
+    },
+    pro: {
+      label: 'Pro',
+      description: 'Máxima performance com IA',
+      features: [
+        'Tudo do Standard',
+        'Simulação de provas com correção',
+        'Upload até 100 páginas',
+        'IA premium: GPT-4o, Claude 3.5 Sonnet e Gemini 1.5 Pro',
+      ],
+    },
+  }), []);
+
+  useEffect(() => {
+    const fetchPlan = async () => {
+      if (!user) {
+        setCurrentPlan('free');
+        return;
+      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('plan')
+        .single();
+
+      if (error) {
+        console.error('Erro ao carregar plano:', error);
+        return;
+      }
+
+      const plan = data?.plan;
+      if (plan === 'standard' || plan === 'pro' || plan === 'free') {
+        setCurrentPlan(plan);
+      } else {
+        setCurrentPlan('free');
+      }
+    };
+
+    fetchPlan();
+  }, [user]);
 
   const handleSubscribe = (plan: 'standard' | 'pro') => {
     setSelectedPlan(plan);
@@ -48,6 +119,12 @@ const Index = () => {
                   <Button asChild variant="ghost">
                     <Link to="/dashboard">{t('dashboard')}</Link>
                   </Button>
+                  <div className="hidden md:flex items-center gap-2 text-sm text-slate-600">
+                    <span>Olá, {displayName}</span>
+                    <span className="rounded-full border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      Plano {planConfig[currentPlan].label}
+                    </span>
+                  </div>
                   <Button variant="outline" onClick={signOut}>{t('logout')}</Button>
                 </>
               ) : (
@@ -68,6 +145,54 @@ const Index = () => {
       {/* Hero */}
       <section className="pt-32 pb-20 px-4">
         <div className="container mx-auto text-center max-w-4xl">
+          {user && (
+            <div className="mb-10 rounded-3xl border border-slate-200 bg-white/90 p-6 text-left shadow-sm">
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">Bem-vindo de volta</p>
+                  <h2 className="text-2xl font-bold text-slate-900">{displayName}</h2>
+                  <p className="text-sm text-slate-600">
+                    Plano atual: <span className="font-semibold">{planConfig[currentPlan].label}</span> · {planConfig[currentPlan].description}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button asChild size="lg">
+                    <Link to="/dashboard">Ir para o painel</Link>
+                  </Button>
+                  {currentPlan !== 'pro' && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => handleSubscribe('pro')}
+                    >
+                      Mudar para Pro
+                    </Button>
+                  )}
+                  {(currentPlan === 'pro' || currentPlan === 'free') && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => handleSubscribe('standard')}
+                    >
+                      Mudar para Standard
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {planConfig[currentPlan].features.map((feature) => (
+                  <div key={feature} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-emerald-600" />
+                    </div>
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 mb-8">
             <Sparkles className="w-4 h-4" />
             <span className="text-sm font-medium">{t('tagline')}</span>
@@ -84,12 +209,21 @@ const Index = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-200 h-14 px-8 text-lg">
-              <Link to="/auth">
-                <Zap className="w-5 h-5" />
-                {t('startFree')}
-              </Link>
-            </Button>
+            {user ? (
+              <Button asChild size="lg" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-200 h-14 px-8 text-lg">
+                <Link to="/dashboard">
+                  <Zap className="w-5 h-5" />
+                  Ir para o painel
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-200 h-14 px-8 text-lg">
+                <Link to="/auth">
+                  <Zap className="w-5 h-5" />
+                  {t('startFree')}
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline" size="lg" className="h-14 px-8 text-lg">
               <a href="#features">{t('learnMore')}</a>
             </Button>
@@ -176,6 +310,7 @@ const Index = () => {
                   '1 documento',
                   'Upload até 5 páginas',
                   'Resumo e explicação',
+                  'IA básica: GPT-4o mini',
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -185,8 +320,18 @@ const Index = () => {
                   </li>
                 ))}
               </ul>
-              <Button asChild size="lg" className="w-full" variant="outline">
-                <Link to="/auth">{t('startFree')}</Link>
+              <Button
+                asChild={!user}
+                size="lg"
+                className="w-full"
+                variant="outline"
+                disabled={user && currentPlan === 'free'}
+              >
+                {user ? (
+                  <span>{currentPlan === 'free' ? 'Plano atual' : 'Voltar ao plano grátis'}</span>
+                ) : (
+                  <Link to="/auth">{t('startFree')}</Link>
+                )}
               </Button>
             </div>
 
@@ -211,6 +356,7 @@ const Index = () => {
                   'Upload até 50 páginas',
                   'Sugestões de melhoria',
                   'Versão melhorada',
+                  'IA avançada: GPT-4o mini e Gemini 1.5 Flash',
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -226,9 +372,10 @@ const Index = () => {
                 variant="outline"
                 onClick={() => handleSubscribe('standard')}
                 asChild={!user}
+                disabled={user && currentPlan === 'standard'}
               >
                 {user ? (
-                  <span>Assinar Standard</span>
+                  <span>{currentPlan === 'standard' ? 'Plano atual' : 'Assinar Standard'}</span>
                 ) : (
                   <Link to="/auth">Assinar Standard</Link>
                 )}
@@ -262,6 +409,7 @@ const Index = () => {
                   '💬 Feedback detalhado',
                   'Upload até 100 páginas',
                   'Suporte prioritário',
+                  'IA premium: GPT-4o, Claude 3.5 Sonnet e Gemini 1.5 Pro',
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -276,9 +424,10 @@ const Index = () => {
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
                 onClick={() => handleSubscribe('pro')}
                 asChild={!user}
+                disabled={user && currentPlan === 'pro'}
               >
                 {user ? (
-                  <span>{t('subscribePro')}</span>
+                  <span>{currentPlan === 'pro' ? 'Plano atual' : t('subscribePro')}</span>
                 ) : (
                   <Link to="/auth">{t('subscribePro')}</Link>
                 )}

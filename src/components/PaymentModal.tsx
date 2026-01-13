@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CreditCard, Loader2, Smartphone } from 'lucide-react';
+import { CreditCard, Loader2, Smartphone, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -58,49 +58,65 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
     }
   };
 
-  // ---------- PayPal ----------
- // IDs fixos dos pacotes PayPal
-const packageIds: Record<string, string> = {
-  standard: 'QA9ZBWU6F8KUE',
-  pro: 'LGPRKFFJ7ADPC', // substitua pelo ID real do Pro
-};
+  // ---------- eMola / mKesh ----------
+  const handleMobileWalletPayment = async () => {
+    setLoading('emola');
+    try {
+      toast.info('Integração eMola / mKesh em breve!', {
+        description: `Valor: ${formattedPrice}${periodLabel}`,
+      });
 
-const handlePaypalPayment = async () => {
-  setLoading('paypal');
-  try {
-    const packageId = packageIds[plan]; // seleciona ID baseado no plano
-
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          amount: price,
-          packageId, // envia pacote para a função
-        }),
-      }
-    );
-
-    const data = await res.json();
-
-    const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
-
-    if (approvalUrl) {
-      window.location.href = approvalUrl; // redireciona para PayPal
-    } else {
-      throw new Error('PayPal URL não encontrada');
+      await new Promise(resolve => setTimeout(resolve, 120));
+    } catch (error) {
+      toast.error('Pagamento falhou. Tente novamente.');
+    } finally {
+      setLoading(null);
     }
-  } catch (err) {
-    toast.error('Erro ao iniciar pagamento PayPal');
-    console.error(err);
-  } finally {
-    setLoading(null);
-  }
-};
+  };
+
+  // ---------- PayPal ----------
+  // IDs fixos dos pacotes PayPal
+  const packageIds: Record<string, string> = {
+    standard: 'QA9ZBWU6F8KUE',
+    pro: 'LGPRKFFJ7ADPC', // substitua pelo ID real do Pro
+  };
+
+  const handlePaypalPayment = async () => {
+    setLoading('paypal');
+    try {
+      const packageId = packageIds[plan]; // seleciona ID baseado no plano
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            amount: price,
+            packageId, // envia pacote para a função
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
+
+      if (approvalUrl) {
+        window.location.href = approvalUrl; // redireciona para PayPal
+      } else {
+        throw new Error('PayPal URL não encontrada');
+      }
+    } catch (err) {
+      toast.error('Erro ao iniciar pagamento PayPal');
+      console.error(err);
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,6 +154,50 @@ const handlePaypalPayment = async () => {
             </div>
           </Button>
 
+          {/* eMola / mKesh */}
+          <Button
+            variant="outline"
+            className="w-full h-16 justify-start gap-4"
+            onClick={handleMobileWalletPayment}
+            disabled={loading !== null}
+          >
+            {loading === 'emola' ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <div className="text-left">
+              <div className="font-semibold">Pagar com eMola / mKesh</div>
+              <div className="text-xs text-muted-foreground">
+                Carteiras móveis para Moçambique
+              </div>
+            </div>
+          </Button>
+
+          {/* Cartão via PayPal */}
+          <Button
+            variant="outline"
+            className="w-full h-16 justify-start gap-4"
+            onClick={handlePaypalPayment}
+            disabled={loading !== null}
+          >
+            {loading === 'paypal' ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <div className="text-left">
+              <div className="font-semibold">Pagar com cartão</div>
+              <div className="text-xs text-muted-foreground">
+                Visa ou Mastercard via PayPal
+              </div>
+            </div>
+          </Button>
+
           {/* PayPal */}
           <Button
             variant="outline"
@@ -155,7 +215,7 @@ const handlePaypalPayment = async () => {
             <div className="text-left">
               <div className="font-semibold">Pagar com PayPal</div>
               <div className="text-xs text-muted-foreground">
-                Visa, Mastercard ou saldo PayPal
+                Use seu saldo PayPal ou outro método
               </div>
             </div>
           </Button>

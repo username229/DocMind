@@ -61,30 +61,56 @@ const Index = () => {
   }), []);
 
   useEffect(() => {
+    let active = true;
+
     const fetchPlan = async () => {
       if (!user) {
-        setCurrentPlan('free');
+        if (active) {
+          setCurrentPlan('free');
+        }
         return;
       }
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('plan')
-        .single();
 
-      if (error) {
+      const metadataPlan = user.user_metadata?.plan as string | undefined;
+      if (metadataPlan === 'standard' || metadataPlan === 'pro' || metadataPlan === 'free') {
+        if (active) {
+          setCurrentPlan(metadataPlan);
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Erro ao carregar plano:', error);
+        }
+
+        const plan = data?.plan;
+        if (plan === 'standard' || plan === 'pro' || plan === 'free') {
+          if (active) {
+            setCurrentPlan(plan);
+          }
+        } else if (active) {
+          setCurrentPlan('free');
+        }
+      } catch (error) {
         console.error('Erro ao carregar plano:', error);
-        return;
-      }
-
-      const plan = data?.plan;
-      if (plan === 'standard' || plan === 'pro' || plan === 'free') {
-        setCurrentPlan(plan);
-      } else {
-        setCurrentPlan('free');
+        if (active) {
+          setCurrentPlan('free');
+        }
       }
     };
 
     fetchPlan();
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   const handleSubscribe = (plan: 'standard' | 'pro') => {

@@ -7,6 +7,7 @@ import { DocumentList } from '@/components/document/DocumentList';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PaymentModal } from '@/components/PaymentModal';
 
 interface Document {
   id: string;
@@ -27,6 +28,8 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'standard' | 'pro'>('standard');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -90,6 +93,11 @@ export default function Dashboard() {
     navigate('/');
   };
 
+  const handleSubscribe = (plan: 'standard' | 'pro') => {
+    setSelectedPlan(plan);
+    setPaymentModalOpen(true);
+  };
+
   const isPro = profile?.plan === 'pro';
   const docsThisMonth = documents.length;
   const freeLimit = 5;
@@ -117,6 +125,9 @@ export default function Dashboard() {
             </Link>
 
             <div className="flex items-center gap-4">
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/#pricing">Planos</Link>
+              </Button>
               {isPro && (
                 <span className="flex items-center gap-1 text-sm text-accent font-medium">
                   <Crown className="w-4 h-4" />
@@ -167,6 +178,14 @@ export default function Dashboard() {
                 Novo Documento
               </Link>
             </Button>
+            {!isPro && (
+              <Button
+                variant="outline"
+                onClick={() => handleSubscribe('standard')}
+              >
+                Adicionar mais documentos
+              </Button>
+            )}
           </div>
 
           {/* Usage warning */}
@@ -184,8 +203,13 @@ export default function Dashboard() {
                     Faça upgrade para o plano Pro e tenha documentos ilimitados.
                   </p>
                 </div>
-                <Button asChild variant="accent" size="sm" className="ml-auto">
-                  <Link to="/#pricing">Upgrade</Link>
+                <Button
+                  variant="accent"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => handleSubscribe('pro')}
+                >
+                  Upgrade
                 </Button>
               </div>
             </motion.div>
@@ -195,6 +219,13 @@ export default function Dashboard() {
           <DocumentList documents={documents} onDelete={handleDelete} />
         </motion.div>
       </main>
+
+      <PaymentModal
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+        plan={selectedPlan}
+        billingPeriod="monthly"
+      />
     </div>
   );
 }

@@ -117,6 +117,9 @@ export default function Dashboard() {
             </Link>
 
             <div className="flex items-center gap-4">
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/#pricing">Planos</Link>
+              </Button>
               {isPro && (
                 <span className="flex items-center gap-1 text-sm text-accent font-medium">
                   <Crown className="w-4 h-4" />

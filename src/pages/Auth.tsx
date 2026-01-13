@@ -281,6 +281,68 @@ export default function Auth() {
               {getButtonText()}
             </Button>
           </form>
+
+          <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
+            {mode === 'login' && (
+              <>
+                <button
+                  type="button"
+                  className="block w-full text-primary hover:underline"
+                  onClick={() => setMode('forgot')}
+                >
+                  Esqueceu a senha? Recuperar
+                </button>
+                <p>
+                  Não tem conta?{' '}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setMode('signup')}
+                  >
+                    Criar conta
+                  </button>
+                </p>
+              </>
+            )}
+
+            {mode === 'signup' && (
+              <p>
+                Já tem conta?{' '}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setMode('login')}
+                >
+                  Entrar
+                </button>
+              </p>
+            )}
+
+            {mode === 'forgot' && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Enviaremos um link seguro para redefinir sua senha.
+                </p>
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setMode('login')}
+                >
+                  Voltar para o login
+                </button>
+              </>
+            )}
+
+            {mode === 'reset' && (
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => setMode('login')}
+              >
+                Voltar para o login
+              </button>
+            )}
+          </div>
         </motion.div>
       </div>
 

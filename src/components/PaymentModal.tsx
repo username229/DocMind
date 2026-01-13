@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CreditCard, Loader2, Smartphone } from 'lucide-react';
+import { CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,77 +30,56 @@ const planPrices = {
 };
 
 export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: PaymentModalProps) {
-  const { t, formatPriceFromMZN } = useLanguage();
+  const { formatPriceFromMZN } = useLanguage();
   const [loading, setLoading] = useState<string | null>(null);
 
   const price = planPrices[billingPeriod][plan];
   const formattedPrice = formatPriceFromMZN(price);
   const periodLabel = billingPeriod === 'monthly' ? '/mês' : '/ano';
 
-  // ---------- M-Pesa ----------
-  const handleMpesaPayment = async () => {
-    setLoading('mpesa');
+  // ---------- PayPal ----------
+  // IDs fixos dos pacotes PayPal
+  const packageIds: Record<string, string> = {
+    standard: 'QA9ZBWU6F8KUE',
+    pro: 'LGPRKFFJ7ADPC', // substitua pelo ID real do Pro
+  };
+
+  const handlePaypalPayment = async () => {
+    setLoading('paypal');
     try {
-      toast.info('Integração M-Pesa em breve!', {
-        description: `Valor: ${formattedPrice}${periodLabel}`,
-      });
+      const packageId = packageIds[plan]; // seleciona ID baseado no plano
 
-      await new Promise(resolve => setTimeout(resolve, 120));
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            amount: price,
+            packageId, // envia pacote para a função
+          }),
+        }
+      );
 
-      // TODO: Implementar função edge do Supabase para M-Pesa
-      // const response = await supabase.functions.invoke('create-mpesa-payment', {
-      //   body: { amount: price, plan, billingPeriod }
-      // });
-    } catch (error) {
-      toast.error('Pagamento falhou. Tente novamente.');
+      const data = await res.json();
+
+      const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
+
+      if (approvalUrl) {
+        window.location.href = approvalUrl; // redireciona para PayPal
+      } else {
+        throw new Error('PayPal URL não encontrada');
+      }
+    } catch (err) {
+      toast.error('Erro ao iniciar pagamento PayPal');
+      console.error(err);
     } finally {
       setLoading(null);
     }
   };
-
-  // ---------- PayPal ----------
- // IDs fixos dos pacotes PayPal
-const packageIds: Record<string, string> = {
-  standard: 'QA9ZBWU6F8KUE',
-  pro: 'LGPRKFFJ7ADPC', // substitua pelo ID real do Pro
-};
-
-const handlePaypalPayment = async () => {
-  setLoading('paypal');
-  try {
-    const packageId = packageIds[plan]; // seleciona ID baseado no plano
-
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          amount: price,
-          packageId, // envia pacote para a função
-        }),
-      }
-    );
-
-    const data = await res.json();
-
-    const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
-
-    if (approvalUrl) {
-      window.location.href = approvalUrl; // redireciona para PayPal
-    } else {
-      throw new Error('PayPal URL não encontrada');
-    }
-  } catch (err) {
-    toast.error('Erro ao iniciar pagamento PayPal');
-    console.error(err);
-  } finally {
-    setLoading(null);
-  }
-};
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,24 +95,24 @@ const handlePaypalPayment = async () => {
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* M-Pesa */}
+          {/* Cartão via PayPal */}
           <Button
             variant="outline"
             className="w-full h-16 justify-start gap-4"
-            onClick={handleMpesaPayment}
+            onClick={handlePaypalPayment}
             disabled={loading !== null}
           >
-            {loading === 'mpesa' ? (
+            {loading === 'paypal' ? (
               <Loader2 className="w-6 h-6 animate-spin" />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-white" />
               </div>
             )}
             <div className="text-left">
-              <div className="font-semibold">Pagar com M-Pesa</div>
+              <div className="font-semibold">Pagar com cartão</div>
               <div className="text-xs text-muted-foreground">
-                Pagamento móvel instantâneo
+                Visa ou Mastercard via PayPal
               </div>
             </div>
           </Button>
@@ -155,7 +134,7 @@ const handlePaypalPayment = async () => {
             <div className="text-left">
               <div className="font-semibold">Pagar com PayPal</div>
               <div className="text-xs text-muted-foreground">
-                Visa, Mastercard ou saldo PayPal
+                Use seu saldo PayPal
               </div>
             </div>
           </Button>

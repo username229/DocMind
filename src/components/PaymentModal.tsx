@@ -45,6 +45,43 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
   const formattedPrice = formatPriceFromMZN(price);
   const periodLabel = billingPeriod === 'monthly' ? '/mês' : '/ano';
 
+
+// Exemplo de como deve ser a chamada dentro do seu componente React
+const handleCreateOrder = async () => {
+  // 1. Pegue a sessão do usuário logado
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    toast.error("Você precisa estar logado para realizar o pagamento.");
+    return;
+  }
+
+  // 2. Passe o access_token no Header Authorization
+  const response = await fetch(
+    'https://sxjrbgiuluffhwqcjurg.supabase.co/functions/v1/create-paypal-order',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`, // 🔑 O segredo está aqui
+      },
+      body: JSON.stringify({ 
+        plan: 'pro', 
+        billingPeriod: 'monthly' 
+      }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro ao criar ordem');
+  }
+
+  return data.id; // Retorna o ID para o SDK do PayPal
+};
+
+
   // ---------- M-Pesa ----------
   const handleMpesaPayment = async () => {
     setLoading('mpesa');

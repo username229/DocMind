@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase'; // ajuste o caminho conforme seu projeto
+import { supabase } from '@/integrations/supabase';
+import { MultiFileUpload } from '@/components/MultiFileUpload'; // Certifique-se que o caminho está certo
+import { Loader2 } from 'lucide-react';
 
 export type UserPlan = 'free' | 'standard' | 'pro';
 
@@ -15,8 +17,13 @@ export function useProfile() {
   useEffect(() => {
     async function getProfile() {
       try {
+        setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        
+        if (!user) {
+          setLoading(false);
+          return;
+        }
 
         const { data, error } = await supabase
           .from('profiles')
@@ -24,10 +31,15 @@ export function useProfile() {
           .eq('id', user.id)
           .maybeSingle();
 
-        // Se houver dados, atualiza. Se não, o estado já é o padrão {plan: 'free'}
-        if (data) setProfile(data);
+        if (error) {
+          console.error('Erro na busca do Supabase:', error);
+        }
+
+        if (data) {
+          setProfile(data);
+        }
       } catch (err) {
-        console.error('Erro silencioso no profile:', err);
+        console.error('Erro de conexão:', err);
       } finally {
         setLoading(false);
       }
@@ -35,30 +47,29 @@ export function useProfile() {
     getProfile();
   }, []);
 
-  // Retornamos sempre um objeto, nunca null ou undefined
-  return { profile: profile || { plan: 'free', documents_count: 0 }, loading };
+  return { profile, loading };
 }
 
 export default function Analisador() {
   const { profile, loading } = useProfile();
 
-  // 1. Se estiver carregando, mostre um estado de loading e NÃO renderize o MultiFileUpload
+  const handleAnalyse = (data: any) => {
+    console.log("Analisando:", data);
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center p-10">
-        <Loader2 className="animate-spin w-8 h-8" />
-        <p className="ml-2">Carregando plano...</p>
+      <div className="flex items-center justify-center p-20">
+        <Loader2 className="animate-spin w-8 h-8 text-primary" />
+        <span className="ml-3 text-muted-foreground">Verificando plano...</span>
       </div>
     );
   }
 
-  // 2. Se o profile for nulo (mesmo após loading), criamos um fallback local
-  const safeProfile = profile || { plan: 'free', documents_count: 0 };
-
   return (
-    <div>
+    <div className="p-4">
       <MultiFileUpload 
-        plan={safeProfile.plan} 
+        plan={profile.plan} 
         isLoading={loading}
         onSubmit={handleAnalyse}
       />

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { CreditCard, Loader2, Smartphone } from 'lucide-react';
+import { PaypalHostedButton } from '@/components/PaypalHostedButton';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,6 +31,12 @@ const planPrices = {
   },
 };
 
+// ✅ Hosted Button IDs (PayPal)
+const hostedButtonIds: Record<'standard' | 'pro', string> = {
+  standard: '9DPBWAUG5X4JQ',
+  pro: 'LGPRKFFJ7ADPC',
+};
+
 export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: PaymentModalProps) {
   const { t, formatPriceFromMZN } = useLanguage();
   const [loading, setLoading] = useState<string | null>(null);
@@ -46,11 +54,6 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
       });
 
       await new Promise(resolve => setTimeout(resolve, 120));
-
-      // TODO: Implementar função edge do Supabase para M-Pesa
-      // const response = await supabase.functions.invoke('create-mpesa-payment', {
-      //   body: { amount: price, plan, billingPeriod }
-      // });
     } catch (error) {
       toast.error('Pagamento falhou. Tente novamente.');
     } finally {
@@ -58,49 +61,9 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
     }
   };
 
-  // ---------- PayPal ----------
- // IDs fixos dos pacotes PayPal
-const packageIds: Record<string, string> = {
-  standard: 'QA9ZBWU6F8KUE',
-  pro: 'LGPRKFFJ7ADPC', // substitua pelo ID real do Pro
-};
-
-const handlePaypalPayment = async () => {
-  setLoading('paypal');
-  try {
-    const packageId = packageIds[plan]; // seleciona ID baseado no plano
-
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          amount: price,
-          packageId, // envia pacote para a função
-        }),
-      }
-    );
-
-    const data = await res.json();
-
-    const approvalUrl = data.links.find((link: any) => link.rel === 'approve')?.href;
-
-    if (approvalUrl) {
-      window.location.href = approvalUrl; // redireciona para PayPal
-    } else {
-      throw new Error('PayPal URL não encontrada');
-    }
-  } catch (err) {
-    toast.error('Erro ao iniciar pagamento PayPal');
-    console.error(err);
-  } finally {
-    setLoading(null);
-  }
-};
+  // ✅ PayPal Hosted Button (sem Edge Function, sem packageIds)
+  const paypalHostedButtonId = hostedButtonIds[plan];
+  const paypalContainerId = `paypal-hosted-${plan}`; // ✅ container novo e limpo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,7 +74,8 @@ const handlePaypalPayment = async () => {
             Escolha o método de pagamento
           </DialogTitle>
           <DialogDescription>
-            Plano: <strong className="capitalize">{plan}</strong> - {formattedPrice}{periodLabel}
+            Plano: <strong className="capitalize">{plan}</strong> - {formattedPrice}
+            {periodLabel}
           </DialogDescription>
         </DialogHeader>
 
@@ -132,33 +96,29 @@ const handlePaypalPayment = async () => {
             )}
             <div className="text-left">
               <div className="font-semibold">Pagar com M-Pesa</div>
-              <div className="text-xs text-muted-foreground">
-                Pagamento móvel instantâneo
-              </div>
+              <div className="text-xs text-muted-foreground">Pagamento móvel instantâneo</div>
             </div>
           </Button>
 
-          {/* PayPal */}
-          <Button
-            variant="outline"
-            className="w-full h-16 justify-start gap-4"
-            onClick={handlePaypalPayment}
-            disabled={loading !== null}
-          >
-            {loading === 'paypal' ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
+          {/* PayPal (Hosted Buttons) */}
+          <div className="w-full border rounded-md p-4">
+            <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-yellow-400 flex items-center justify-center font-bold">
                 PP
               </div>
-            )}
-            <div className="text-left">
-              <div className="font-semibold">Pagar com PayPal</div>
-              <div className="text-xs text-muted-foreground">
-                Visa, Mastercard ou saldo PayPal
+              <div>
+                <div className="font-semibold">Pagar com PayPal</div>
+                <div className="text-xs text-muted-foreground">
+                  Visa, Mastercard ou saldo PayPal
+                </div>
               </div>
             </div>
-          </Button>
+
+            <PaypalHostedButton
+              hostedButtonId={paypalHostedButtonId}
+              containerId={paypalContainerId}
+            />
+          </div>
 
           <div className="pt-4 border-t">
             <p className="text-xs text-center text-muted-foreground">

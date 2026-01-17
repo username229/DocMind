@@ -9,45 +9,34 @@ interface Profile {
 }
 
 export function useProfile() {
-  // Iniciamos com um valor padrão seguro
   const [profile, setProfile] = useState<Profile>({ plan: 'free', documents_count: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     async function getProfile() {
       try {
-        setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-        if (!user) {
-          setLoading(false);
-          return;
-        }
-
-        const { data, error: supabaseError } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('plan, documents_count')
           .eq('id', user.id)
-          .maybeSingle(); // Troque .single() por .maybeSingle() para evitar erro se o perfil não existir ainda
+          .maybeSingle();
 
-        if (supabaseError) throw supabaseError;
-
-        if (data) {
-          setProfile(data);
-        }
+        // Se houver dados, atualiza. Se não, o estado já é o padrão {plan: 'free'}
+        if (data) setProfile(data);
       } catch (err) {
-        console.error('Erro ao carregar perfil:', err);
-        setError(err);
+        console.error('Erro silencioso no profile:', err);
       } finally {
         setLoading(false);
       }
     }
-
     getProfile();
   }, []);
 
-  return { profile, loading, error };
+  // Retornamos sempre um objeto, nunca null ou undefined
+  return { profile: profile || { plan: 'free', documents_count: 0 }, loading };
 }
 
 export default function Analisador() {

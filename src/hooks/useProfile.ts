@@ -53,13 +53,23 @@ export function useProfile() {
 export default function Analisador() {
   const { profile, loading } = useProfile();
 
+  // 1. Se estiver carregando, mostre um estado de loading e NÃO renderize o MultiFileUpload
+  if (loading) {
+    return (
+      <div className="flex justify-center p-10">
+        <Loader2 className="animate-spin w-8 h-8" />
+        <p className="ml-2">Carregando plano...</p>
+      </div>
+    );
+  }
+
+  // 2. Se o profile for nulo (mesmo após loading), criamos um fallback local
+  const safeProfile = profile || { plan: 'free', documents_count: 0 };
+
   return (
     <div>
-      {/* Passamos profile?.plan (se profile sumir por 1ms, não trava)
-         e ?? 'free' (se for nulo, vira 'free')
-      */}
       <MultiFileUpload 
-        plan={profile?.plan ?? 'free'} 
+        plan={safeProfile.plan} 
         isLoading={loading}
         onSubmit={handleAnalyse}
       />

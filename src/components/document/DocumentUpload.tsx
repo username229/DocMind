@@ -1,168 +1,207 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, X, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, Loader2, Image as ImageIcon, Plus, AlertCircle, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import * as pdfjsLib from 'pdfjs-dist';
 
-interface DocumentUploadProps {
-  onSubmit: (title: string, content: string) => void;
-  isLoading?: boolean;
+// Configuração do Worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+const PLAN_LIMITS = {
+  free: 3,
+  standard: 10,
+  pro: 20,
+};
+
+type UserPlan = 'free' | 'standard' | 'pro';
+
+interface FileItem {
+  id: string;
+  file: File;
+  title: string;
+  content: string;
+  imageBase64: string | null;
+  imagePreview: string | null;
+  status: 'pending' | 'processing' | 'complete' | 'error';
 }
 
-export function DocumentUpload({ onSubmit, isLoading }: DocumentUploadProps) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+interface MultiFileUploadProps {
+  onSubmit: (files: { title: string; content: string; imageBase64?: string }[]) => void;
+  isLoading?: boolean;
+  plan?: UserPlan;
+}
+
+export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFileUploadProps) {
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [extracting, setExtracting] = useState(false);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+  // CORREÇÃO: Garante que maxFiles sempre tenha um número, mesmo se 'plan' vier errado do banco
+  const currentPlan = PLAN_LIMITS[plan] ? plan : 'free';
+  const maxFiles = PLAN_LIMITS[currentPlan];
+  const isLimitReached = files.length >= maxFiles;
 
-    setFile(file);
-    setTitle(file.name.replace('.pdf', '').replace('.txt', ''));
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
 
-    if (file.type === 'application/pdf') {
-      // For PDFs, we'll inform the user to paste the text
-      setExtracting(false);
-      toast.info('Para PDFs, por favor copie e cole o texto do documento abaixo.');
-      setContent('');
-    } else if (file.type === 'text/plain') {
-      const text = await file.text();
-      setContent(text);
-      toast.success('Arquivo carregado com sucesso!');
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(" ");
+        fullText += pageText + "\n";
+      }
+      return fullText;
+    } catch (error) {
+      console.error("Erro na extração do PDF:", error);
+      throw new Error("Não foi possível ler o PDF.");
     }
-  }, []);
+  };
+
+  const processFile = async (file: File): Promise<Omit<FileItem, 'id' | 'status'>> => {
+    const fileName = file.name.replace(/\.[^/.]+$/, '');
+    
+    if (file.type.startsWith('image/')) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          resolve({ file, title: fileName, content: '', imageBase64: base64, imagePreview: base64 });
+        };
+        reader.readAsDataURL(file);
+      });
+    } 
+    
+    if (file.type === 'application/pdf') {
+      const text = await extractTextFromPDF(file);
+      return { file, title: fileName, content: text, imageBase64: null, imagePreview: null };
+    }
+
+    if (file.type === 'text/plain') {
+      const text = await file.text();
+      return { file, title: fileName, content: text, imageBase64: null, imagePreview: null };
+    }
+
+    return { file, title: fileName, content: '', imageBase64: null, imagePreview: null };
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    // Validação de limite
+    if (files.length + acceptedFiles.length > maxFiles) {
+      toast.error(`Limite atingido! Seu plano ${currentPlan} permite ${maxFiles} arquivos.`);
+      return;
+    }
+
+    setExtracting(true);
+    const loadingToast = toast.loading("Lendo documentos...");
+    
+    try {
+      const processedResults = await Promise.all(
+        acceptedFiles.map(async (file) => {
+          const processed = await processFile(file);
+          return {
+            ...processed,
+            id: Math.random().toString(36).substr(2, 9),
+            status: 'complete' as const,
+          };
+        })
+      );
+
+      setFiles((prev) => [...prev, ...processedResults]);
+      toast.success("Processado com sucesso!", { id: loadingToast });
+    } catch (error) {
+      toast.error("Erro ao processar arquivos.", { id: loadingToast });
+    } finally {
+      setExtracting(false);
+    }
+  }, [files.length, maxFiles, currentPlan]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
       'text/plain': ['.txt'],
+      'image/*': ['.png', '.jpg', '.jpeg'],
     },
-    maxFiles: 1,
-    disabled: isLoading || extracting,
+    disabled: isLoading || extracting || isLimitReached,
   });
 
   const handleSubmit = () => {
-    if (!title.trim()) {
-      toast.error('Por favor, adicione um título');
+    const validFiles = files.filter(f => f.title.trim() && (f.content.trim() || f.imageBase64));
+    if (validFiles.length === 0) {
+      toast.error('Adicione conteúdo aos documentos.');
       return;
     }
-    if (!content.trim()) {
-      toast.error('Por favor, adicione conteúdo ou cole o texto do documento');
-      return;
-    }
-    onSubmit(title, content);
-  };
-
-  const clearFile = () => {
-    setFile(null);
-    setContent('');
-    setTitle('');
+    onSubmit(validFiles.map(f => ({ 
+      title: f.title, 
+      content: f.content, 
+      imageBase64: f.imageBase64 || undefined 
+    })));
   };
 
   return (
     <div className="space-y-6">
-      {/* Title input */}
-      <div>
-        <label className="block text-sm font-medium mb-2">Título do documento</label>
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex: Relatório Anual 2024"
-          disabled={isLoading}
-        />
-      </div>
-
-      {/* Upload area */}
-      <div>
-        <label className="block text-sm font-medium mb-2">Arquivo ou texto</label>
-        
-        {!file ? (
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-              isDragActive
-                ? 'border-indigo-500 bg-indigo-50'
-                : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50'
-            } ${extracting ? 'opacity-50 cursor-wait' : ''}`}
-          >
-            <input {...getInputProps()} />
-            <Upload className="w-10 h-10 mx-auto mb-4 text-slate-400" />
-            <p className="text-slate-700 font-medium mb-1">
-              {isDragActive ? 'Solte o arquivo aqui' : 'Arraste um PDF ou TXT'}
-            </p>
-            <p className="text-sm text-slate-500">
-              ou clique para selecionar
-            </p>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 p-4 bg-slate-100 rounded-xl">
-            <FileText className="w-8 h-8 text-indigo-500" />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-slate-900 truncate">{file.name}</p>
-              <p className="text-sm text-slate-500">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clearFile}
-              disabled={isLoading}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Text input */}
-      <div>
-        <label className="block text-sm font-medium mb-2">
-          {file ? 'Cole o texto do documento aqui' : 'Ou cole seu texto aqui'}
-        </label>
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Cole ou digite o texto que deseja analisar..."
-          rows={8}
-          disabled={isLoading || extracting}
-          className="resize-none"
-        />
-        {content && (
-          <p className="text-xs text-slate-500 mt-1">
-            {content.length.toLocaleString()} caracteres
+      <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+        isDragActive ? 'border-primary bg-primary/5' : isLimitReached ? 'bg-muted/20 opacity-50 cursor-not-allowed' : 'border-border hover:border-primary/50 cursor-pointer'
+      }`}>
+        <input {...getInputProps()} />
+        <Upload className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold">
+            {isLimitReached ? 'Limite atingido' : 'Arraste seus documentos aqui'}
           </p>
-        )}
+          <p className="text-xs text-muted-foreground uppercase tracking-tighter">
+            Plano {currentPlan} — {files.length} de {maxFiles} usados
+          </p>
+        </div>
       </div>
 
-      {/* Submit button */}
-      <Button
-        onClick={handleSubmit}
-        disabled={isLoading || extracting || !content.trim() || !title.trim()}
-        size="lg"
-        className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+      {files.length > 0 && (
+        <ScrollArea className="max-h-[300px] rounded-lg border bg-muted/20 p-4">
+          <div className="space-y-3">
+            {files.map((fileItem) => (
+              <div key={fileItem.id} className="flex gap-4 p-3 bg-card rounded-lg border shadow-sm items-center">
+                <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center shrink-0">
+                  {fileItem.imageBase64 ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileCheck className="w-5 h-5 text-primary" />}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <Input 
+                    value={fileItem.title} 
+                    onChange={(e) => setFiles(prev => prev.map(f => f.id === fileItem.id ? {...f, title: e.target.value} : f))}
+                    className="h-8 text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                    {fileItem.content ? fileItem.content.substring(0, 50) + "..." : "Análise visual pronta"}
+                  </p>
+                </div>
+
+                <Button variant="ghost" size="icon" onClick={() => setFiles(prev => prev.filter(f => f.id !== fileItem.id))} className="h-8 w-8">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+
+      <Button 
+        onClick={handleSubmit} 
+        disabled={isLoading || extracting || files.length === 0} 
+        className="w-full h-12 text-base font-bold"
       >
-        {extracting ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Extraindo texto...
-          </>
-        ) : isLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Analisando com IA...
-          </>
+        {extracting || isLoading ? (
+          <Loader2 className="animate-spin mr-2 h-5 w-5" />
         ) : (
-          <>
-            <FileText className="w-4 h-4" />
-            Analisar Documento
-          </>
+          <Plus className="mr-2 h-5 w-5" />
         )}
+        {extracting ? "Lendo arquivos..." : isLoading ? "IA Analisando..." : `Analisar ${files.length} item(ns)`}
       </Button>
     </div>
   );

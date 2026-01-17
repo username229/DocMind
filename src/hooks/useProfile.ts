@@ -9,7 +9,8 @@ interface Profile {
 }
 
 export function useProfile() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  // Iniciamos com um valor padrão seguro
+  const [profile, setProfile] = useState<Profile>({ plan: 'free', documents_count: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
 
@@ -17,8 +18,6 @@ export function useProfile() {
     async function getProfile() {
       try {
         setLoading(true);
-
-        // Pegamos o ID do usuário logado primeiro
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -26,22 +25,20 @@ export function useProfile() {
           return;
         }
 
-        // Buscamos o perfil
         const { data, error: supabaseError } = await supabase
           .from('profiles')
           .select('plan, documents_count')
           .eq('id', user.id)
-          .single(); // .single() evita que venha um array vazio
+          .maybeSingle(); // Troque .single() por .maybeSingle() para evitar erro se o perfil não existir ainda
 
         if (supabaseError) throw supabaseError;
 
-        setProfile(data);
+        if (data) {
+          setProfile(data);
+        }
       } catch (err) {
         console.error('Erro ao carregar perfil:', err);
         setError(err);
-        
-        // Fallback: Se der erro (como o 406), define um plano padrão para não quebrar a UI
-        setProfile({ plan: 'free', documents_count: 0 });
       } finally {
         setLoading(false);
       }
@@ -51,4 +48,21 @@ export function useProfile() {
   }, []);
 
   return { profile, loading, error };
+}
+
+export default function Analisador() {
+  const { profile, loading } = useProfile();
+
+  return (
+    <div>
+      {/* Passamos profile?.plan (se profile sumir por 1ms, não trava)
+         e ?? 'free' (se for nulo, vira 'free')
+      */}
+      <MultiFileUpload 
+        plan={profile?.plan ?? 'free'} 
+        isLoading={loading}
+        onSubmit={handleAnalyse}
+      />
+    </div>
+  );
 }

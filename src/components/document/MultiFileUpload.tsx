@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configuração do Worker do PDF.js (Necessário para processar PDFs)
+// Configuração do Worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 const PLAN_LIMITS = {
@@ -38,28 +38,35 @@ export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFil
   const [files, setFiles] = useState<FileItem[]>([]);
   const [extracting, setExtracting] = useState(false);
 
-  const maxFiles = PLAN_LIMITS[plan];
+  // CORREÇÃO: Garante que maxFiles sempre tenha um número, mesmo se 'plan' vier errado do banco
+  const currentPlan = PLAN_LIMITS[plan] ? plan : 'free';
+  const maxFiles = PLAN_LIMITS[currentPlan];
   const isLimitReached = files.length >= maxFiles;
 
-  // --- Função para Extrair Texto de PDF ---
   const extractTextFromPDF = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = "";
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(" ");
-      fullText += pageText + "\n";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(" ");
+        fullText += pageText + "\n";
+      }
+      return fullText;
+    } catch (error) {
+      console.error("Erro na extração do PDF:", error);
+      throw new Error("Não foi possível ler o PDF.");
     }
-    return fullText;
   };
 
   const processFile = async (file: File): Promise<Omit<FileItem, 'id' | 'status'>> => {
     const fileName = file.name.replace(/\.[^/.]+$/, '');
     
-    // 1. Processar Imagens
     if (file.type.startsWith('image/')) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -71,18 +78,11 @@ export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFil
       });
     } 
     
-    // 2. Processar PDF (Automático agora)
     if (file.type === 'application/pdf') {
-      try {
-        const text = await extractTextFromPDF(file);
-        return { file, title: fileName, content: text, imageBase64: null, imagePreview: null };
-      } catch (e) {
-        console.error("Erro no PDF:", e);
-        return { file, title: fileName, content: '', imageBase64: null, imagePreview: null };
-      }
+      const text = await extractTextFromPDF(file);
+      return { file, title: fileName, content: text, imageBase64: null, imagePreview: null };
     }
 
-    // 3. Processar Texto Plano
     if (file.type === 'text/plain') {
       const text = await file.text();
       return { file, title: fileName, content: text, imageBase64: null, imagePreview: null };
@@ -92,13 +92,14 @@ export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFil
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    // Validação de limite
     if (files.length + acceptedFiles.length > maxFiles) {
-      toast.error(`Limite do plano ${plan} atingido.`);
+      toast.error(`Limite atingido! Seu plano ${currentPlan} permite ${maxFiles} arquivos.`);
       return;
     }
 
     setExtracting(true);
-    const loadingToast = toast.loading("Extraindo texto dos documentos...");
+    const loadingToast = toast.loading("Lendo documentos...");
     
     try {
       const processedResults = await Promise.all(
@@ -113,13 +114,13 @@ export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFil
       );
 
       setFiles((prev) => [...prev, ...processedResults]);
-      toast.success("Todos os arquivos foram processados!", { id: loadingToast });
+      toast.success("Processado com sucesso!", { id: loadingToast });
     } catch (error) {
-      toast.error("Falha ao processar alguns arquivos.", { id: loadingToast });
+      toast.error("Erro ao processar arquivos.", { id: loadingToast });
     } finally {
       setExtracting(false);
     }
-  }, [files.length, maxFiles, plan]);
+  }, [files.length, maxFiles, currentPlan]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -134,53 +135,54 @@ export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFil
   const handleSubmit = () => {
     const validFiles = files.filter(f => f.title.trim() && (f.content.trim() || f.imageBase64));
     if (validFiles.length === 0) {
-      toast.error('Verifique se todos os documentos possuem conteúdo.');
+      toast.error('Adicione conteúdo aos documentos.');
       return;
     }
-    onSubmit(validFiles.map(f => ({ title: f.title, content: f.content, imageBase64: f.imageBase64 || undefined })));
+    onSubmit(validFiles.map(f => ({ 
+      title: f.title, 
+      content: f.content, 
+      imageBase64: f.imageBase64 || undefined 
+    })));
   };
 
   return (
     <div className="space-y-6">
-      {/* Área de Drop */}
       <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-        isDragActive ? 'border-primary bg-primary/5' : isLimitReached ? 'bg-muted/20 opacity-50' : 'border-border hover:border-primary/50'
+        isDragActive ? 'border-primary bg-primary/5' : isLimitReached ? 'bg-muted/20 opacity-50 cursor-not-allowed' : 'border-border hover:border-primary/50 cursor-pointer'
       }`}>
         <input {...getInputProps()} />
         <Upload className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
-        <p className="font-medium uppercase text-xs tracking-widest text-muted-foreground mb-2">
-          {plan} Plan: {files.length}/{maxFiles}
-        </p>
-        <p className="text-sm font-semibold">Arraste seus documentos e imagens aqui</p>
-        <p className="text-xs text-muted-foreground mt-1">PDF, TXT, JPG ou PNG (Leitura automática)</p>
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold">
+            {isLimitReached ? 'Limite atingido' : 'Arraste seus documentos aqui'}
+          </p>
+          <p className="text-xs text-muted-foreground uppercase tracking-tighter">
+            Plano {currentPlan} — {files.length} de {maxFiles} usados
+          </p>
+        </div>
       </div>
 
-      {/* Lista de Arquivos Processados */}
       {files.length > 0 && (
-        <ScrollArea className="max-h-[400px] rounded-lg border bg-muted/30 p-4">
-          <div className="space-y-4">
+        <ScrollArea className="max-h-[300px] rounded-lg border bg-muted/20 p-4">
+          <div className="space-y-3">
             {files.map((fileItem) => (
-              <div key={fileItem.id} className="flex gap-4 p-3 bg-background rounded-lg border shadow-sm items-center">
-                {fileItem.imagePreview ? (
-                  <img src={fileItem.imagePreview} className="w-12 h-12 rounded object-cover" />
-                ) : (
-                  <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center">
-                    <FileCheck className="w-6 h-6 text-primary" />
-                  </div>
-                )}
+              <div key={fileItem.id} className="flex gap-4 p-3 bg-card rounded-lg border shadow-sm items-center">
+                <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center shrink-0">
+                  {fileItem.imageBase64 ? <ImageIcon className="w-5 h-5 text-primary" /> : <FileCheck className="w-5 h-5 text-primary" />}
+                </div>
                 
                 <div className="flex-1 min-w-0">
                   <Input 
                     value={fileItem.title} 
                     onChange={(e) => setFiles(prev => prev.map(f => f.id === fileItem.id ? {...f, title: e.target.value} : f))}
-                    className="h-7 text-sm font-medium"
+                    className="h-8 text-sm"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1 truncate">
-                    {fileItem.content ? `${fileItem.content.substring(0, 60)}...` : 'Imagem pronta para análise'}
+                    {fileItem.content ? fileItem.content.substring(0, 50) + "..." : "Análise visual pronta"}
                   </p>
                 </div>
 
-                <Button variant="ghost" size="icon" onClick={() => setFiles(prev => prev.filter(f => f.id !== fileItem.id))}>
+                <Button variant="ghost" size="icon" onClick={() => setFiles(prev => prev.filter(f => f.id !== fileItem.id))} className="h-8 w-8">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -189,9 +191,17 @@ export function MultiFileUpload({ onSubmit, isLoading, plan = 'free' }: MultiFil
         </ScrollArea>
       )}
 
-      <Button onClick={handleSubmit} disabled={isLoading || extracting || files.length === 0} className="w-full h-12">
-        {extracting ? <Loader2 className="animate-spin mr-2" /> : <Plus className="mr-2" />}
-        Analisar {files.length} Documentos agora
+      <Button 
+        onClick={handleSubmit} 
+        disabled={isLoading || extracting || files.length === 0} 
+        className="w-full h-12 text-base font-bold"
+      >
+        {extracting || isLoading ? (
+          <Loader2 className="animate-spin mr-2 h-5 w-5" />
+        ) : (
+          <Plus className="mr-2 h-5 w-5" />
+        )}
+        {extracting ? "Lendo arquivos..." : isLoading ? "IA Analisando..." : `Analisar ${files.length} item(ns)`}
       </Button>
     </div>
   );

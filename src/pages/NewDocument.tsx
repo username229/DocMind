@@ -45,9 +45,11 @@ export default function NewDocument() {
   const [quizResults, setQuizResults] = useState<any>(null);
   const [quizMode, setQuizMode] = useState<'generator' | 'taking' | 'results'>('generator');
 
-  const isPro = subscription.plan === 'pro';
-  const planLimit = PLAN_LIMITS[subscription.plan as keyof typeof PLAN_LIMITS] || 2;
-  const canAnalyze = analysisCount < planLimit;
+  const plan = (subscription?.plan as keyof typeof PLAN_LIMITS) ?? 'free';
+const isPro = plan === 'pro';
+const planLimit = PLAN_LIMITS[plan] ?? 2;
+const canAnalyze = analysisCount < planLimit;
+
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -57,10 +59,10 @@ export default function NewDocument() {
 
   useEffect(() => {
     // Fetch analysis count for free users
-    if (user && subscription.plan === 'free') {
+    if (user && plan === 'free') {
       fetchAnalysisCount();
     }
-  }, [user, subscription.plan]);
+  }, [user, plan]);
 
   const fetchAnalysisCount = async () => {
     if (!user) return;
@@ -77,7 +79,7 @@ export default function NewDocument() {
     if (!user) return;
 
     // Check plan limits for free users
-    if (subscription.plan === 'free' && analysisCount + files.length > planLimit) {
+    if (plan === 'free' && analysisCount + files.length > planLimit) {
       toast.error(`Plano grátis permite apenas ${planLimit} análises. Faça upgrade para continuar.`);
       return;
     }
@@ -289,7 +291,7 @@ export default function NewDocument() {
               {documentId ? 'Análise do Documento' : 'Novo Documento'}
             </h1>
 
-            {subscription.plan === 'free' && (
+            {plan === 'free' && (
               <div className="text-sm text-muted-foreground">
                 {analysisCount}/{planLimit} análises usadas
                 <Link to="/#pricing" className="text-primary ml-2 hover:underline">
@@ -308,10 +310,10 @@ export default function NewDocument() {
               <MultiFileUpload
                 onSubmit={handleSubmit}
                 isLoading={isAnalyzing}
-                maxFiles={subscription.plan === 'free' ? 1 : 20}
+                maxFiles={plan === 'free' ? 1 : 20}
               />
 
-              {!canAnalyze && subscription.plan === 'free' && (
+              {!canAnalyze && plan === 'free' && (
                 <div className="mt-4 p-4 rounded-xl bg-accent/10 border border-accent/20">
                   <div className="flex items-center gap-2 text-accent">
                     <Lock className="w-4 h-4" />
@@ -407,4 +409,6 @@ export default function NewDocument() {
       </main>
     </div>
   );
+  if (!user) return null;
+
 }

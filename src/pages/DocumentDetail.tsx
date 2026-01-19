@@ -71,7 +71,7 @@ export default function DocumentDetail() {
     setLoadingStates((prev) => ({ ...prev, [type]: true }));
 
     try {
-      const response = await supabase.functions.invoke('analyze-document', {
+      const response = await supabase.functions.invoke('analyse-document', {
         body: { content: document.original_content, analysisType: type },
       });
 

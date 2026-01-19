@@ -150,7 +150,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Error in analyze-document:", error);
+    console.error("Error in analyse-document:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

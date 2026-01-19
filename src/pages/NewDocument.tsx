@@ -169,7 +169,7 @@ const canAnalyze = analysisCount < planLimit;
     isImage: boolean = false,
     imageData?: string
   ) => {
-    const response = await supabase.functions.invoke('analyze-document', {
+    const response = await supabase.functions.invoke('analyse-document', {
       body: { content: documentContent, analysisType: type, isImage, imageBase64: imageData },
     });
 
@@ -194,7 +194,7 @@ const canAnalyze = analysisCount < planLimit;
     setLoadingStates((prev) => ({ ...prev, [type]: true }));
 
     try {
-      const response = await supabase.functions.invoke('analyze-document', {
+      const response = await supabase.functions.invoke('analyse-document', {
         body: { content: documentContent, analysisType: type, isImage, imageBase64: imageData },
       });
 

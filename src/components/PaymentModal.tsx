@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { CreditCard, Loader2, Smartphone } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { PaypalHostedButton } from '@/components/PaypalHostedButton';
 
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { toast } from 'sonner';
 
 interface PaymentModalProps {
   open: boolean;
@@ -38,69 +35,15 @@ const hostedButtonIds: Record<'standard' | 'pro', string> = {
 };
 
 export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: PaymentModalProps) {
-  const { t, formatPriceFromMZN } = useLanguage();
-  const [loading, setLoading] = useState<string | null>(null);
+  const { formatPriceFromMZN } = useLanguage();
 
   const price = planPrices[billingPeriod][plan];
   const formattedPrice = formatPriceFromMZN(price);
   const periodLabel = billingPeriod === 'monthly' ? '/mês' : '/ano';
 
-
-// Exemplo de como deve ser a chamada dentro do seu componente React
-const handleCreateOrder = async () => {
-  // 1. Pegue a sessão do usuário logado
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-  if (sessionError || !session) {
-    toast.error("Você precisa estar logado para realizar o pagamento.");
-    return;
-  }
-
-  // 2. Passe o access_token no Header Authorization
-  const response = await fetch(
-    'https://sxjrbgiuluffhwqcjurg.supabase.co/functions/v1/create-paypal-order',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`, // 🔑 O segredo está aqui
-      },
-      body: JSON.stringify({ 
-        plan: 'pro', 
-        billingPeriod: 'monthly' 
-      }),
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Erro ao criar ordem');
-  }
-
-  return data.id; // Retorna o ID para o SDK do PayPal
-};
-
-
-  // ---------- M-Pesa ----------
-  const handleMpesaPayment = async () => {
-    setLoading('mpesa');
-    try {
-      toast.info('Integração M-Pesa em breve!', {
-        description: `Valor: ${formattedPrice}${periodLabel}`,
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 120));
-    } catch (error) {
-      toast.error('Pagamento falhou. Tente novamente.');
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  // ✅ PayPal Hosted Button (sem Edge Function, sem packageIds)
+  // ✅ PayPal Hosted Button
   const paypalHostedButtonId = hostedButtonIds[plan];
-  const paypalContainerId = `paypal-hosted-${plan}`; // ✅ container novo e limpo
+  const paypalContainerId = `paypal-hosted-${plan}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,7 +51,7 @@ const handleCreateOrder = async () => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
-            Escolha o método de pagamento
+            Confirmar pagamento
           </DialogTitle>
           <DialogDescription>
             Plano: <strong className="capitalize">{plan}</strong> - {formattedPrice}
@@ -117,29 +60,9 @@ const handleCreateOrder = async () => {
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* M-Pesa */}
-          <Button
-            variant="outline"
-            className="w-full h-16 justify-start gap-4"
-            onClick={handleMpesaPayment}
-            disabled={loading !== null}
-          >
-            {loading === 'mpesa' ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-white" />
-              </div>
-            )}
-            <div className="text-left">
-              <div className="font-semibold">Pagar com M-Pesa</div>
-              <div className="text-xs text-muted-foreground">Pagamento móvel instantâneo</div>
-            </div>
-          </Button>
-
           {/* PayPal (Hosted Buttons) */}
           <div className="w-full border rounded-md p-4">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-yellow-400 flex items-center justify-center font-bold">
                 PP
               </div>

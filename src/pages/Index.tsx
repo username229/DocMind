@@ -137,7 +137,7 @@ const Index = () => {
               { icon: Lightbulb, title: t('simpleExplanation'), desc: t('simpleExplanationDesc'), color: 'text-amber-500', bg: 'bg-amber-50' },
               { icon: Target, title: t('improvementSuggestions'), desc: t('improvementSuggestionsDesc'), color: 'text-emerald-500', bg: 'bg-emerald-50' },
               { icon: Wand2, title: t('improvedVersionTitle'), desc: t('improvedVersionDesc'), color: 'text-purple-500', bg: 'bg-purple-50' },
-              { icon: GraduationCap, title: 'Simulação de Provas', desc: 'Gere provas aleatórias e receba correção automática com feedback detalhado (Pro)', color: 'text-rose-500', bg: 'bg-rose-50' },
+              { icon: GraduationCap, title: t('proPlanFeature2').replace('📚 ', ''), desc: t('proPlanFeature5').replace('💬 ', '') + ' (Pro)', color: 'text-rose-500', bg: 'bg-rose-50' },
               { icon: Shield, title: t('securePrivate'), desc: t('securePrivateDesc'), color: 'text-blue-500', bg: 'bg-blue-50' },
             ].map((f) => (
               <div key={f.title} className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-all hover:-translate-y-1">
@@ -164,18 +164,18 @@ const Index = () => {
             {/* Free Plan */}
             <div className="bg-white rounded-3xl p-8 border border-slate-200">
               <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">{t('free')}</h3>
-                <p className="text-sm text-slate-500 mb-4">Perfeito para experimentar</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">{t('freePlanTitle')}</h3>
+                <p className="text-sm text-slate-500 mb-4">{t('freePlanDesc')}</p>
                 <div className="flex items-baseline justify-center">
-                  <span className="text-4xl font-bold text-slate-900">Grátis</span>
+                  <span className="text-4xl font-bold text-slate-900">{t('free')}</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8">
                 {[
-                  '2 análises de IA no total',
-                  '1 documento',
-                  'Upload até 5 páginas',
-                  'Resumo e explicação',
+                  t('freePlanFeature1'),
+                  t('freePlanFeature2'),
+                  t('freePlanFeature3'),
+                  t('freePlanFeature4'),
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -195,22 +195,22 @@ const Index = () => {
               <div className="text-center mb-8">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-2xl font-bold text-slate-900">Standard</h3>
+                  <h3 className="text-2xl font-bold text-slate-900">{t('standardPlanTitle')}</h3>
                 </div>
-                <p className="text-sm text-slate-500 mb-4">Todas as funcionalidades essenciais</p>
+                <p className="text-sm text-slate-500 mb-4">{t('standardPlanDesc')}</p>
                 <div className="flex items-baseline justify-center">
                   <span className="text-4xl font-bold text-slate-900">{standardPrice}</span>
-                  <span className="text-slate-500 ml-1">/mês</span>
+                  <span className="text-slate-500 ml-1">{t('perMonth')}</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8">
                 {[
-                  'Documentos ilimitados',
-                  'Todas as 4 análises de IA',
-                  'Histórico ilimitado',
-                  'Upload até 50 páginas',
-                  'Sugestões de melhoria',
-                  'Versão melhorada',
+                  t('standardPlanFeature1'),
+                  t('standardPlanFeature2'),
+                  t('standardPlanFeature3'),
+                  t('standardPlanFeature4'),
+                  t('standardPlanFeature5'),
+                  t('standardPlanFeature6'),
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -228,9 +228,9 @@ const Index = () => {
                 asChild={!user}
               >
                 {user ? (
-                  <span>Assinar Standard</span>
+                  <span>{t('subscribeStandard')}</span>
                 ) : (
-                  <Link to="/auth">Assinar Standard</Link>
+                  <Link to="/auth">{t('subscribeStandard')}</Link>
                 )}
               </Button>
             </div>
@@ -245,23 +245,23 @@ const Index = () => {
               <div className="text-center mb-8 pt-2">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Crown className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-2xl font-bold text-slate-900">{t('pro')}</h3>
+                  <h3 className="text-2xl font-bold text-slate-900">{t('proPlanTitle')}</h3>
                 </div>
-                <p className="text-sm text-slate-500 mb-4">Para estudantes e profissionais</p>
+                <p className="text-sm text-slate-500 mb-4">{t('proPlanDesc')}</p>
                 <div className="flex items-baseline justify-center">
                   <span className="text-4xl font-bold text-slate-900">{proPrice}</span>
-                  <span className="text-slate-500 ml-1">/mês</span>
+                  <span className="text-slate-500 ml-1">{t('perMonth')}</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8">
                 {[
-                  'Tudo do Standard',
-                  '📚 Simulação de provas',
-                  '🎲 Provas aleatórias',
-                  '✅ Correção automática',
-                  '💬 Feedback detalhado',
-                  'Upload até 100 páginas',
-                  'Suporte prioritário',
+                  t('proPlanFeature1'),
+                  t('proPlanFeature2'),
+                  t('proPlanFeature3'),
+                  t('proPlanFeature4'),
+                  t('proPlanFeature5'),
+                  t('proPlanFeature6'),
+                  t('proPlanFeature7'),
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">

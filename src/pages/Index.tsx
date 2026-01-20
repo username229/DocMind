@@ -137,7 +137,7 @@ const Index = () => {
               { icon: Lightbulb, title: t('simpleExplanation'), desc: t('simpleExplanationDesc'), color: 'text-amber-500', bg: 'bg-amber-50' },
               { icon: Target, title: t('improvementSuggestions'), desc: t('improvementSuggestionsDesc'), color: 'text-emerald-500', bg: 'bg-emerald-50' },
               { icon: Wand2, title: t('improvedVersionTitle'), desc: t('improvedVersionDesc'), color: 'text-purple-500', bg: 'bg-purple-50' },
-              { icon: GraduationCap, title: t('proPlanFeature2').replace('📚 ', ''), desc: t('proPlanFeature5').replace('💬 ', '') + ' (Pro)', color: 'text-rose-500', bg: 'bg-rose-50' },
+              { icon: GraduationCap, title: t('proPlanFeature3').replace('📚 ', ''), desc: t('proPlanFeature3').replace('📚 ', '') + ' - Disponível em todos os planos', color: 'text-rose-500', bg: 'bg-rose-50' },
               { icon: Shield, title: t('securePrivate'), desc: t('securePrivateDesc'), color: 'text-blue-500', bg: 'bg-blue-50' },
             ].map((f) => (
               <div key={f.title} className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-all hover:-translate-y-1">
@@ -176,6 +176,7 @@ const Index = () => {
                   t('freePlanFeature2'),
                   t('freePlanFeature3'),
                   t('freePlanFeature4'),
+                  t('freePlanFeature5'),
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">

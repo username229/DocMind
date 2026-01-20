@@ -12,21 +12,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
-// Plan limits for analyses
+// Limites de documentos por plano
 const PLAN_LIMITS = {
-  free: 2,
-  standard: Infinity,
-  pro: Infinity,
+  free: 2,        // 2 documentos totais com todos os recursos
+  standard: 10,   // 10 documentos
+  pro: 20,        // 20 documentos
 };
 
 export default function NewDocument() {
-  const { user, subscription, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisCount, setAnalysisCount] = useState(0);
+  const [documentCount, setDocumentCount] = useState(0);
+  const [userPlan, setUserPlan] = useState<'free' | 'standard' | 'pro'>('free');
   const [results, setResults] = useState({
     summary: null as string | null,
     simple: null as string | null,
@@ -40,16 +41,14 @@ export default function NewDocument() {
     improved: false,
   });
 
-  // Quiz state (Pro feature)
+  // Quiz state (disponível para todos os planos, mas Pro tem features extras)
   const [quiz, setQuiz] = useState<any>(null);
   const [quizResults, setQuizResults] = useState<any>(null);
   const [quizMode, setQuizMode] = useState<'generator' | 'taking' | 'results'>('generator');
 
-  const plan = (subscription?.plan as keyof typeof PLAN_LIMITS) ?? 'free';
-const isPro = plan === 'pro';
-const planLimit = PLAN_LIMITS[plan] ?? 2;
-const canAnalyze = analysisCount < planLimit;
-
+  const isPro = userPlan === 'pro';
+  const planLimit = PLAN_LIMITS[userPlan] ?? 2;
+  const canCreateMore = documentCount < planLimit;
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -58,41 +57,59 @@ const canAnalyze = analysisCount < planLimit;
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    // Fetch analysis count for free users
-    if (user && plan === 'free') {
-      fetchAnalysisCount();
+    if (user) {
+      fetchUserData();
     }
-  }, [user, plan]);
+  }, [user]);
 
-  const fetchAnalysisCount = async () => {
+  const fetchUserData = async () => {
     if (!user) return;
     
-    const { count } = await supabase
-      .from('documents')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
-    
-    setAnalysisCount(count || 0);
+    try {
+      // Buscar plano do usuário
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profileError) throw profileError;
+      
+      const plan = (profileData?.plan as 'free' | 'standard' | 'pro') || 'free';
+      setUserPlan(plan);
+
+      // Buscar contagem de documentos
+      const { count, error: countError } = await supabase
+        .from('documents')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      
+      if (countError) throw countError;
+      
+      setDocumentCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
   };
 
   const handleSubmit = async (files: { title: string; content: string; imageBase64?: string }[]) => {
     if (!user) return;
 
-    // Check plan limits for free users
-    if (plan === 'free' && analysisCount + files.length > planLimit) {
-      toast.error(`Plano grátis permite apenas ${planLimit} análises. Faça upgrade para continuar.`);
+    // Verificar limite de documentos
+    if (documentCount + files.length > planLimit) {
+      toast.error(`Seu plano ${userPlan} permite apenas ${planLimit} documentos. Faça upgrade para continuar.`);
       return;
     }
 
     setIsAnalyzing(true);
 
     try {
-      // Process first file (for single file analysis display)
+      // Processar primeiro arquivo para exibição
       const firstFile = files[0];
       setContent(firstFile.content);
       setImageBase64(firstFile.imageBase64 || null);
 
-      // Create documents for all files
+      // Criar documentos para todos os arquivos
       const createdDocs = await Promise.all(
         files.map(async (file) => {
           const { data: doc, error } = await supabase
@@ -111,33 +128,34 @@ const canAnalyze = analysisCount < planLimit;
         })
       );
 
-      // Set the first document as current
+      // Definir o primeiro documento como atual
       setDocumentId(createdDocs[0].doc.id);
 
-      // Analyze first document
+      // Analisar primeiro documento - TODOS OS RECURSOS PARA TODOS OS PLANOS
       const firstDoc = createdDocs[0];
       const isImage = !!firstDoc.file.imageBase64;
 
+      // Executar todas as 4 análises para TODOS os planos (Free, Standard, Pro)
       await Promise.all([
         analyzeDocument(firstDoc.doc.id, firstDoc.file.content, 'summary', isImage, firstDoc.file.imageBase64),
         analyzeDocument(firstDoc.doc.id, firstDoc.file.content, 'simple', isImage, firstDoc.file.imageBase64),
-        canAnalyze && analyzeDocument(firstDoc.doc.id, firstDoc.file.content, 'suggestions', isImage, firstDoc.file.imageBase64),
-        canAnalyze && analyzeDocument(firstDoc.doc.id, firstDoc.file.content, 'improved', isImage, firstDoc.file.imageBase64),
-      ].filter(Boolean));
+        analyzeDocument(firstDoc.doc.id, firstDoc.file.content, 'suggestions', isImage, firstDoc.file.imageBase64),
+        analyzeDocument(firstDoc.doc.id, firstDoc.file.content, 'improved', isImage, firstDoc.file.imageBase64),
+      ]);
 
-      // Update first document status
+      // Atualizar status do primeiro documento
       await supabase
         .from('documents')
         .update({ status: 'completed' })
         .eq('id', firstDoc.doc.id);
 
-      // Process remaining documents in background
+      // Processar documentos restantes em background
       if (createdDocs.length > 1) {
         processRemainingDocuments(createdDocs.slice(1));
       }
 
-      setAnalysisCount((prev) => prev + files.length);
-      toast.success(`${files.length} documento(s) processado(s)!`);
+      setDocumentCount((prev) => prev + files.length);
+      toast.success(`${files.length} documento(s) processado(s) com sucesso!`);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Erro ao processar documento');
@@ -153,6 +171,8 @@ const canAnalyze = analysisCount < planLimit;
         await Promise.all([
           analyzeDocumentSilent(doc.id, file.content, 'summary', isImage, file.imageBase64),
           analyzeDocumentSilent(doc.id, file.content, 'simple', isImage, file.imageBase64),
+          analyzeDocumentSilent(doc.id, file.content, 'suggestions', isImage, file.imageBase64),
+          analyzeDocumentSilent(doc.id, file.content, 'improved', isImage, file.imageBase64),
         ]);
         await supabase.from('documents').update({ status: 'completed' }).eq('id', doc.id);
       } catch (error) {
@@ -222,7 +242,7 @@ const canAnalyze = analysisCount < planLimit;
     await analyzeDocument(documentId, content, type, !!imageBase64, imageBase64 || undefined);
   };
 
-  // Quiz handlers (Pro feature)
+  // Quiz handlers
   const handleQuizGenerated = (quizData: any) => {
     setQuiz(quizData);
     setQuizMode('taking');
@@ -252,6 +272,8 @@ const canAnalyze = analysisCount < planLimit;
     );
   }
 
+  if (!user) return null;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -265,12 +287,17 @@ const canAnalyze = analysisCount < planLimit;
               <span className="font-display text-xl font-bold">DocMind</span>
             </Link>
 
-            {isPro && (
-              <span className="flex items-center gap-1 text-sm text-accent font-medium">
-                <Crown className="w-4 h-4" />
-                Pro
+            <div className="flex items-center gap-4">
+              {isPro && (
+                <span className="flex items-center gap-1 text-sm text-accent font-medium">
+                  <Crown className="w-4 h-4" />
+                  Pro
+                </span>
+              )}
+              <span className="text-sm text-muted-foreground">
+                Plano: <span className="font-medium capitalize">{userPlan}</span>
               </span>
-            )}
+            </div>
           </div>
         </div>
       </header>
@@ -291,14 +318,14 @@ const canAnalyze = analysisCount < planLimit;
               {documentId ? 'Análise do Documento' : 'Novo Documento'}
             </h1>
 
-            {plan === 'free' && (
-              <div className="text-sm text-muted-foreground">
-                {analysisCount}/{planLimit} análises usadas
+            <div className="text-sm text-muted-foreground">
+              {documentCount}/{planLimit} documentos usados
+              {userPlan === 'free' && (
                 <Link to="/#pricing" className="text-primary ml-2 hover:underline">
-                  Upgrade
+                  Upgrade para mais
                 </Link>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -310,17 +337,17 @@ const canAnalyze = analysisCount < planLimit;
               <MultiFileUpload
                 onSubmit={handleSubmit}
                 isLoading={isAnalyzing}
-                maxFiles={plan === 'free' ? 1 : 20}
+                plan={userPlan}
               />
 
-              {!canAnalyze && plan === 'free' && (
+              {!canCreateMore && (
                 <div className="mt-4 p-4 rounded-xl bg-accent/10 border border-accent/20">
                   <div className="flex items-center gap-2 text-accent">
                     <Lock className="w-4 h-4" />
-                    <span className="font-medium">Limite atingido</span>
+                    <span className="font-medium">Limite de {planLimit} documentos atingido</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Faça upgrade para continuar analisando documentos.
+                    Faça upgrade para {userPlan === 'free' ? 'Standard (10 docs)' : 'Pro (20 docs)'} para continuar.
                   </p>
                   <Button asChild variant="accent" size="sm" className="mt-3">
                     <Link to="/#pricing">Ver Planos</Link>
@@ -342,73 +369,50 @@ const canAnalyze = analysisCount < planLimit;
             )}
           </div>
 
-          {/* Pro Features - Quiz Section */}
+          {/* Quiz Section - Disponível para todos, mas Pro tem features extras */}
           {documentId && (
             <div className="mt-8">
               <div className="flex items-center gap-2 mb-6">
                 <Crown className="w-5 h-5 text-accent" />
                 <h2 className="font-display text-2xl font-bold">Simulador de Provas</h2>
-                {!isPro && (
-                  <span className="px-2 py-1 text-xs bg-accent/10 text-accent rounded-full">
-                    Pro
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground">
+                  (Disponível para todos os planos)
+                </span>
               </div>
 
-              {isPro ? (
-                <div className="grid lg:grid-cols-2 gap-8">
-                  {quizMode === 'generator' && (
-                    <QuizGenerator
-                      content={content || results.summary || ''}
-                      documentId={documentId}
-                      onQuizGenerated={handleQuizGenerated}
+              <div className="grid lg:grid-cols-2 gap-8">
+                {quizMode === 'generator' && (
+                  <QuizGenerator
+                    content={content || results.summary || ''}
+                    documentId={documentId}
+                    onQuizGenerated={handleQuizGenerated}
+                  />
+                )}
+
+                {quizMode === 'taking' && quiz && (
+                  <div className="lg:col-span-2">
+                    <QuizTaker
+                      quiz={quiz}
+                      onComplete={handleQuizComplete}
+                      onReset={handleQuizReset}
                     />
-                  )}
+                  </div>
+                )}
 
-                  {quizMode === 'taking' && quiz && (
-                    <div className="lg:col-span-2">
-                      <QuizTaker
-                        quiz={quiz}
-                        onComplete={handleQuizComplete}
-                        onReset={handleQuizReset}
-                      />
-                    </div>
-                  )}
-
-                  {quizMode === 'results' && quizResults && (
-                    <div className="lg:col-span-2">
-                      <QuizResults
-                        results={quizResults}
-                        onRetry={handleQuizRetry}
-                        onNewQuiz={handleQuizReset}
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="glass-card rounded-2xl p-8 text-center">
-                  <Lock className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <h3 className="font-display text-xl font-semibold mb-2">
-                    Funcionalidade Pro
-                  </h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    Com o plano Pro, você pode gerar provas aleatórias, fazer simulados e receber 
-                    correção automática com feedback detalhado.
-                  </p>
-                  <Button asChild variant="hero">
-                    <Link to="/#pricing">
-                      <Crown className="w-4 h-4 mr-2" />
-                      Fazer Upgrade para Pro
-                    </Link>
-                  </Button>
-                </div>
-              )}
+                {quizMode === 'results' && quizResults && (
+                  <div className="lg:col-span-2">
+                    <QuizResults
+                      results={quizResults}
+                      onRetry={handleQuizRetry}
+                      onNewQuiz={handleQuizReset}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </motion.div>
       </main>
     </div>
   );
-  if (!user) return null;
-
 }

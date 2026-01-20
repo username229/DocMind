@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations, Language, TranslationKey } from '@/lib/i18n';
-import { currencies, Currency, getCurrencyByCode, defaultCurrencies, convertPrice, formatPrice as formatPriceUtil, convertFromMZN, basePricesMZN } from '@/lib/currencies';
+import { currencies, Currency, getCurrencyByCode, defaultCurrencies, convertPrice, formatPrice as formatPriceUtil, basePricesUSD } from '@/lib/currencies';
 
 interface LanguageContextType {
   language: Language;
@@ -11,7 +11,7 @@ interface LanguageContextType {
   currencies: Currency[];
   formatPrice: (priceUSD: number) => string;
   formatPriceFromMZN: (priceMZN: number) => string;
-  basePricesMZN: typeof basePricesMZN;
+  basePricesUSD: typeof basePricesUSD;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -29,8 +29,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [currencyCode, setCurrencyCode] = useState<string>(() => {
     const saved = localStorage.getItem('docmind-currency');
     if (saved) return saved;
-    // Default to MZN for Mozambique, otherwise USD
-    return defaultCurrencies.mozambique;
+    // Default to USD
+    return defaultCurrencies.usa;
   });
 
   const currency = getCurrencyByCode(currencyCode) || currencies[0];
@@ -61,10 +61,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const formatPriceFromMZN = (priceMZN: number): string => {
-    if (currency.code === 'MZN') {
-      return formatPriceUtil(priceMZN, currency);
-    }
-    const converted = convertFromMZN(priceMZN, currency);
+    // Convert MZN to USD first
+    const mznCurrency = currencies.find(c => c.code === 'MZN')!;
+    const priceUSD = priceMZN * mznCurrency.rateToUSD;
+    
+    // Then convert to target currency
+    const converted = convertPrice(priceUSD, currency);
     return formatPriceUtil(converted, currency);
   };
 
@@ -78,7 +80,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       currencies,
       formatPrice,
       formatPriceFromMZN,
-      basePricesMZN
+      basePricesUSD
     }}>
       {children}
     </LanguageContext.Provider>

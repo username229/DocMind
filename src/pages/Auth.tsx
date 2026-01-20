@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Brain, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Brain, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ const authSchema = z.object({
 });
 
 type AuthMode = 'login' | 'signup' | 'forgot' | 'reset';
-type SocialProvider = 'google' | 'facebook';
+type SocialProvider = 'google';
 
 /* =======================
    Component
@@ -144,10 +144,7 @@ export default function Auth() {
       const { error } = await signInWithProvider(provider);
 
       if (error) {
-        const providerName =
-          provider === 'google' ? 'Google' : 'Facebook';
-
-        toast.error(`Erro ao fazer login com ${providerName}`);
+        toast.error('Erro ao fazer login com Google');
       }
     } catch {
       toast.error('Erro inesperado ao fazer login');
@@ -231,16 +228,16 @@ export default function Auth() {
                 Continuar com Google
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="w-full"
-                onClick={() => handleSocialLogin('facebook')}
-                disabled={loading}
-              >
-                Continuar com Facebook
-              </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Ou continue com email
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -248,21 +245,35 @@ export default function Auth() {
             {mode === 'signup' && (
               <div>
                 <Label>Nome completo</Label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                <Input 
+                  value={fullName} 
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={loading}
+                />
               </div>
             )}
 
             {mode !== 'reset' && (
               <div>
                 <Label>Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
               </div>
             )}
 
             {(mode === 'login' || mode === 'signup' || mode === 'reset') && (
               <div>
                 <Label>{mode === 'reset' ? 'Nova senha' : 'Senha'}</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
               </div>
             )}
 
@@ -273,7 +284,21 @@ export default function Auth() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
                 />
+              </div>
+            )}
+
+            {mode === 'login' && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setMode('forgot')}
+                  className="text-sm text-primary hover:underline"
+                  disabled={loading}
+                >
+                  Esqueceu a senha?
+                </button>
               </div>
             )}
 
@@ -281,6 +306,45 @@ export default function Auth() {
               {getButtonText()}
             </Button>
           </form>
+
+          <div className="mt-6 text-center text-sm">
+            {mode === 'login' && (
+              <p className="text-muted-foreground">
+                Não tem uma conta?{' '}
+                <button
+                  onClick={() => setMode('signup')}
+                  className="text-primary hover:underline"
+                  disabled={loading}
+                >
+                  Criar conta
+                </button>
+              </p>
+            )}
+            {mode === 'signup' && (
+              <p className="text-muted-foreground">
+                Já tem uma conta?{' '}
+                <button
+                  onClick={() => setMode('login')}
+                  className="text-primary hover:underline"
+                  disabled={loading}
+                >
+                  Fazer login
+                </button>
+              </p>
+            )}
+            {mode === 'forgot' && (
+              <p className="text-muted-foreground">
+                Lembrou a senha?{' '}
+                <button
+                  onClick={() => setMode('login')}
+                  className="text-primary hover:underline"
+                  disabled={loading}
+                >
+                  Voltar ao login
+                </button>
+              </p>
+            )}
+          </div>
         </motion.div>
       </div>
 

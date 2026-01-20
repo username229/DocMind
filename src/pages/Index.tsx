@@ -9,12 +9,12 @@ import { PaymentModal } from '@/components/PaymentModal';
 
 const Index = () => {
   const { user, signOut } = useAuth();
-  const { t, formatPriceFromMZN, basePricesMZN } = useLanguage();
+  const { t, formatPrice, basePricesUSD } = useLanguage();
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'standard' | 'pro'>('pro');
 
-  const standardPrice = formatPriceFromMZN(basePricesMZN.standard);
-  const proPrice = formatPriceFromMZN(basePricesMZN.pro);
+  const standardPrice = formatPrice(basePricesUSD.standard);
+  const proPrice = formatPrice(basePricesUSD.pro);
 
   const handleSubscribe = (plan: 'standard' | 'pro') => {
     setSelectedPlan(plan);

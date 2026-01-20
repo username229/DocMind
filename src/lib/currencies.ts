@@ -68,20 +68,21 @@ export const currencies: Currency[] = [
   { code: 'TRY', symbol: '₺', name: 'Lira', country: 'Turkey', flag: '🇹🇷', rateToUSD: 0.031 },
 ];
 
-// Base prices in MZN (Mozambican Metical)
-export const basePricesMZN = {
+// Base prices in USD
+export const basePricesUSD = {
   free: 0,
-  standard: 85,
-  pro: 120,
+  standard: 5,
+  pro: 9.99,
 };
 
-// Convert MZN prices to other currencies
-export function convertFromMZN(priceMZN: number, targetCurrency: Currency): number {
-  const mzn = currencies.find(c => c.code === 'MZN')!;
-  const priceUSD = priceMZN * mzn.rateToUSD;
-  return convertPrice(priceUSD, targetCurrency);
-}
+// For backwards compatibility - convert USD to MZN
+export const basePricesMZN = {
+  free: 0,
+  standard: Math.round(basePricesUSD.standard / 0.016), // ~312 MZN
+  pro: Math.round(basePricesUSD.pro / 0.016), // ~624 MZN
+};
 
+// Convert from USD to target currency
 export function convertPrice(priceUSD: number, currency: Currency): number {
   const priceInCurrency = priceUSD / currency.rateToUSD;
   // Round to 2 decimal places for most currencies, or 0 for currencies with large values
@@ -89,6 +90,13 @@ export function convertPrice(priceUSD: number, currency: Currency): number {
     return Math.round(priceInCurrency);
   }
   return Math.round(priceInCurrency * 100) / 100;
+}
+
+// Convert MZN prices to other currencies (for backwards compatibility)
+export function convertFromMZN(priceMZN: number, targetCurrency: Currency): number {
+  const mzn = currencies.find(c => c.code === 'MZN')!;
+  const priceUSD = priceMZN * mzn.rateToUSD;
+  return convertPrice(priceUSD, targetCurrency);
 }
 
 export function formatPrice(price: number, currency: Currency): string {

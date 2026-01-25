@@ -23,11 +23,12 @@ export function HeroSection() {
           >
         
           {/* Title */}
-      <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight text-foreground">
+<h1 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight text-foreground">
   <span className="whitespace-nowrap">
-    Transforme seus <span className="text-accent">documentos</span> com IA
+    Transforme seus documentos com IA
   </span>
 </h1>
+
 
 
           {/* Subtitle */}

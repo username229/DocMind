@@ -21,16 +21,14 @@ export function HeroSection() {
             transition={{ delay: 0.2 }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-8"
           >
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm font-medium">Análise inteligente de documentos</span>
-          </motion.div>
-
+        
           {/* Title */}
-          <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight text-foreground">
-            Transforme seus{' '}
-            <span className="text-accent">documentos</span>
-            {' '}com IA
-          </h1>
+      <h1 className="font-display text-5xl md:text-7xl font-bold mb-6 leading-tight text-foreground">
+  <span className="whitespace-nowrap">
+    Transforme seus <span className="text-accent">documentos</span> com IA
+  </span>
+</h1>
+
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">

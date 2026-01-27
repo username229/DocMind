@@ -25,7 +25,7 @@ const planPrices = {
 // ✅ Dodo checkout links (os que você mandou)
 const DODO_LINKS: Record<"standard" | "pro", string> = {
   standard:
-    "https://checkout.dodopayments.com/buy/pdt_0NXBlp8QKAqSCyBOwvAbB?quantity=1&redirect_url=https://docmind.co",
+"https://checkout.dodopayments.com/buy/pdt_0NXBlp8QKAqSCyBOwvAbB?quantity=1",
   pro:
     "https://checkout.dodopayments.com/buy/pdt_0NXCGSxnwR3uZ3A897lLH?quantity=1&redirect_url=https://docmind.co",
 };
@@ -67,7 +67,7 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
                 D
               </div>
               <div>
-                <div className="font-semibold">Pagar com Dodo</div>
+                <div className="font-semibold">Pagar AGORAA</div>
                 <div className="text-xs text-muted-foreground">
                   Checkout externo (cartão, etc.)
                 </div>

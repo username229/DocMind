@@ -1,5 +1,5 @@
-import { CreditCard } from 'lucide-react';
-import { PaypalHostedButton } from '@/components/PaypalHostedButton';
+import { CreditCard, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import {
   Dialog,
@@ -7,31 +7,27 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useLanguage } from '@/contexts/LanguageContext';
+} from "@/components/ui/dialog";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  plan: 'standard' | 'pro';
-  billingPeriod: 'monthly' | 'yearly';
+  plan: "standard" | "pro";
+  billingPeriod: "monthly" | "yearly";
 }
 
 const planPrices = {
-  monthly: {
-    standard: 85,
-    pro: 120,
-  },
-  yearly: {
-    standard: 1020,
-    pro: 1440,
-  },
+  monthly: { standard: 319.31, pro: 637.98 },
+  yearly: { standard: 3832.86, pro: 7665.73 },
 };
 
-// ✅ Hosted Button IDs (PayPal)
-const hostedButtonIds: Record<'standard' | 'pro', string> = {
-  standard: '9DPBWAUG5X4JQ',
-  pro: 'LGPRKFFJ7ADPC',
+// ✅ Dodo checkout links (os que você mandou)
+const DODO_LINKS: Record<"standard" | "pro", string> = {
+  standard:
+    "https://checkout.dodopayments.com/buy/pdt_0NXBlp8QKAqSCyBOwvAbB?quantity=1&redirect_url=https://docmind.co",
+  pro:
+    "https://checkout.dodopayments.com/buy/pdt_0NXCGSxnwR3uZ3A897lLH?quantity=1&redirect_url=https://docmind.co",
 };
 
 export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: PaymentModalProps) {
@@ -39,11 +35,15 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
 
   const price = planPrices[billingPeriod][plan];
   const formattedPrice = formatPriceFromMZN(price);
-  const periodLabel = billingPeriod === 'monthly' ? '/mês' : '/ano';
+  const periodLabel = billingPeriod === "monthly" ? "/mês" : "/ano";
 
-  // ✅ PayPal Hosted Button
-  const paypalHostedButtonId = hostedButtonIds[plan];
-  const paypalContainerId = `paypal-hosted-${plan}`;
+  const checkoutUrl = DODO_LINKS[plan];
+
+  const handleCheckout = () => {
+    // fecha o modal e redireciona para o checkout do Dodo
+    onOpenChange(false);
+    window.location.href = checkoutUrl;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,24 +60,24 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* PayPal (Hosted Buttons) */}
+          {/* ✅ Dodo */}
           <div className="w-full border rounded-md p-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-yellow-400 flex items-center justify-center font-bold">
-                PP
+              <div className="w-10 h-10 rounded-lg bg-foreground text-background flex items-center justify-center font-bold">
+                D
               </div>
               <div>
-                <div className="font-semibold">Pagar com PayPal</div>
+                <div className="font-semibold">Pagar com Dodo</div>
                 <div className="text-xs text-muted-foreground">
-                  Visa, Mastercard ou saldo PayPal
+                  Checkout externo (cartão, etc.)
                 </div>
               </div>
             </div>
 
-            <PaypalHostedButton
-              hostedButtonId={paypalHostedButtonId}
-              containerId={paypalContainerId}
-            />
+            <Button className="w-full" onClick={handleCheckout}>
+              Ir para o checkout
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </Button>
           </div>
 
           <div className="pt-4 border-t">

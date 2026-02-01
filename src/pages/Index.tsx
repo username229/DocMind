@@ -7,6 +7,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { LanguageCurrencySelector } from '@/components/LanguageCurrencySelector';
 import { PaymentModal } from '@/components/PaymentModal';
 
+import { SEO } from "@/components/SEO";
+
+const base = "https://docmind.co";
+
+// helper simples pra hreflang
+function makeAlternates(path: string) {
+  return [
+    { hreflang: "en", href: `${base}/en${path}` },
+    { hreflang: "pt", href: `${base}/pt${path}` },
+    { hreflang: "x-default", href: `${base}/en${path}` },
+  ];
+}
+
 const Index = () => {
   const { user, signOut } = useAuth();
   const { t, formatPrice, basePricesUSD } = useLanguage();

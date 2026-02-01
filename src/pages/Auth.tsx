@@ -9,6 +9,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { SEO } from "@/components/SEO";
+
+const base = "https://docmind.co";
+
+// helper simples pra hreflang
+function makeAlternates(path: string) {
+  return [
+    { hreflang: "en", href: `${base}/en${path}` },
+    { hreflang: "pt", href: `${base}/pt${path}` },
+    { hreflang: "x-default", href: `${base}/en${path}` },
+  ];
+}
 
 /* =======================
    Types & Schema

@@ -9,18 +9,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-import { SEO } from "@/components/SEO";
 
-const base = "https://docmind.co";
-
-// helper simples pra hreflang
-function makeAlternates(path: string) {
-  return [
-    { hreflang: "en", href: `${base}/en${path}` },
-    { hreflang: "pt", href: `${base}/pt${path}` },
-    { hreflang: "x-default", href: `${base}/en${path}` },
-  ];
-}
 
 interface Document {
   id: string;

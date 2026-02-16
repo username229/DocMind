@@ -1,0 +1,19 @@
+# Supabase Secrets Template (Copy/Paste)
+
+Use in Supabase -> Edge Functions -> Secrets
+
+## Card checkout provider
+CARD_PROVIDER=flutterwave
+FLW_CHECKOUT_STANDARD_URL=
+FLW_CHECKOUT_PRO_URL=
+
+# (Optional alternatives)
+# DODO_CHECKOUT_STANDARD_URL=
+# DODO_CHECKOUT_PRO_URL=
+# PAYSTACK_CHECKOUT_STANDARD_URL=
+# PAYSTACK_CHECKOUT_PRO_URL=
+
+## M-Pesa / eMola gateway
+MOBILE_MONEY_PROVIDER_BASE_URL=
+MOBILE_MONEY_PROVIDER_API_KEY=
+MOBILE_MONEY_MERCHANT_ID=

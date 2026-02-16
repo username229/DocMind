@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Lightbulb, Target, Wand2, Copy, Check, Loader2 } from 'lucide-react';
+import { FileText, Lightbulb, Target, Wand2, Copy, Check, Download, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -70,9 +70,58 @@ export function AnalysisResults({
     setTimeout(() => setCopiedTab(null), 2000);
   };
 
+  const buildFullReport = () => {
+    const parts = [
+      summary ? `## Resumo\n\n${summary}` : '',
+      simpleExplanation ? `## Explicação Simples\n\n${simpleExplanation}` : '',
+      suggestions ? `## Sugestões\n\n${suggestions}` : '',
+      improvedVersion ? `## Versão Melhorada\n\n${improvedVersion}` : '',
+    ].filter(Boolean);
+
+    return parts.join('\n\n---\n\n');
+  };
+
+  const copyAllResults = async () => {
+    const full = buildFullReport();
+    if (!full) {
+      toast.error('Ainda não há resultados para copiar.');
+      return;
+    }
+    await navigator.clipboard.writeText(full);
+    toast.success('Relatório completo copiado!');
+  };
+
+  const downloadResults = () => {
+    const full = buildFullReport();
+    if (!full) {
+      toast.error('Ainda não há resultados para baixar.');
+      return;
+    }
+
+    const blob = new Blob([full], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `docmind-analise-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="glass-card rounded-2xl p-6">
-      <h3 className="font-display text-xl font-semibold mb-6">Resultados da Análise</h3>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="font-display text-xl font-semibold">Resultados da Análise</h3>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={copyAllResults}>
+            <Copy className="w-4 h-4 mr-2" />
+            Copiar tudo
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadResults}>
+            <Download className="w-4 h-4 mr-2" />
+            Baixar .txt
+          </Button>
+        </div>
+      </div>
 
       <Tabs defaultValue="summary" className="w-full">
         <TabsList className="grid grid-cols-4 mb-6">

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Brain, Plus, LogOut, FileText, Crown } from 'lucide-react';
+import { Brain, Plus, LogOut, FileText, Crown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DocumentList } from '@/components/document/DocumentList';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +30,9 @@ export default function Dashboard() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'processing' | 'error' | 'pending'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -71,6 +75,9 @@ export default function Dashboard() {
   };
 
   const handleDelete = async (id: string) => {
+    const confirmed = window.confirm('Deseja mesmo excluir este documento? Esta ação não pode ser desfeita.');
+    if (!confirmed) return;
+
     try {
       const { error } = await supabase
         .from('documents')
@@ -78,7 +85,7 @@ export default function Dashboard() {
         .eq('id', id);
 
       if (error) throw error;
-      
+
       setDocuments(documents.filter((doc) => doc.id !== id));
       toast.success('Documento excluído');
     } catch (error) {
@@ -96,6 +103,26 @@ export default function Dashboard() {
   const docsThisMonth = documents.length;
   const freeLimit = 5;
   const canCreate = isPro || docsThisMonth < freeLimit;
+
+  const filteredDocuments = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    const byFilter = documents.filter((doc) => {
+      const matchesSearch = !query || doc.title.toLowerCase().includes(query) || (doc.summary || '').toLowerCase().includes(query);
+      const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+
+    if (sortBy === 'title') {
+      return [...byFilter].sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    if (sortBy === 'oldest') {
+      return [...byFilter].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }
+
+    return [...byFilter].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [documents, search, statusFilter, sortBy]);
 
   if (authLoading || loading) {
     return (
@@ -193,8 +220,44 @@ export default function Dashboard() {
             </motion.div>
           )}
 
+          {/* Discovery tools */}
+          <div className="mb-6 grid gap-3 md:grid-cols-3">
+            <div className="relative md:col-span-2">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por título ou conteúdo..."
+                className="pl-9"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+              >
+                <option value="all">Todos</option>
+                <option value="completed">Concluídos</option>
+                <option value="processing">Processando</option>
+                <option value="error">Com erro</option>
+                <option value="pending">Pendentes</option>
+              </select>
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
+                <option value="newest">Mais novos</option>
+                <option value="oldest">Mais antigos</option>
+                <option value="title">A-Z</option>
+              </select>
+            </div>
+          </div>
+
           {/* Document list */}
-          <DocumentList documents={documents} onDelete={handleDelete} />
+          <DocumentList documents={filteredDocuments} onDelete={handleDelete} />
         </motion.div>
       </main>
     </div>

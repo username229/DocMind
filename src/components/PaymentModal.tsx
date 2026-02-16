@@ -1,6 +1,6 @@
-import { Copy, CreditCard, ExternalLink, Smartphone } from "lucide-react";
+import { useState } from "react";
+import { CreditCard, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface PaymentModalProps {
   open: boolean;
@@ -22,45 +24,60 @@ const planPrices = {
   yearly: { standard: 3832.86, pro: 7665.73 },
 };
 
-// ✅ Dodo checkout links (os que você mandou)
-const DODO_LINKS: Record<"standard" | "pro", string> = {
-  standard:
-"https://checkout.dodopayments.com/buy/pdt_0NXBlp8QKAqSCyBOwvAbB?quantity=1",
-  pro:
-    "https://checkout.dodopayments.com/buy/pdt_0NXCGSxnwR3uZ3A897lLH?quantity=1&redirect_url=https://docmind.co",
-};
-
-const MOZ_PAYMENT_NUMBER = "258842206751";
-
 export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: PaymentModalProps) {
   const { formatPriceFromMZN } = useLanguage();
+  const [loadingMethod, setLoadingMethod] = useState<null | "card" | "mpesa" | "emola">(null);
 
   const price = planPrices[billingPeriod][plan];
   const formattedPrice = formatPriceFromMZN(price);
   const periodLabel = billingPeriod === "monthly" ? "/mês" : "/ano";
 
-  const checkoutUrl = DODO_LINKS[plan];
-
-  const handleCheckout = () => {
-    // fecha o modal e redireciona para o checkout do Dodo
-    onOpenChange(false);
-    window.location.href = checkoutUrl;
-  };
-
-  const copyMozNumber = async () => {
+  const startCardCheckout = async () => {
+    setLoadingMethod("card");
     try {
-      await navigator.clipboard.writeText(MOZ_PAYMENT_NUMBER);
-      alert("Número copiado: " + MOZ_PAYMENT_NUMBER);
-    } catch {
-      alert("Não foi possível copiar automaticamente. Use: " + MOZ_PAYMENT_NUMBER);
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { plan, billingPeriod, method: "card" },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error("Checkout de cartão indisponível.");
+
+      onOpenChange(false);
+      window.location.assign(data.url);
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao iniciar pagamento com cartão.");
+    } finally {
+      setLoadingMethod(null);
     }
   };
 
-  const openWhatsAppConfirmation = () => {
-    const message = encodeURIComponent(
-      `Olá, paguei o plano ${plan.toUpperCase()} (${formattedPrice}${periodLabel}) via M-Pesa/eMola para ${MOZ_PAYMENT_NUMBER}. Segue o comprovativo.`
-    );
-    window.open(`https://wa.me/${MOZ_PAYMENT_NUMBER}?text=${message}`, "_blank");
+  const startMobileMoneyPayment = async (method: "mpesa" | "emola") => {
+    setLoadingMethod(method);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-mobile-money-payment", {
+        body: { plan, billingPeriod, method },
+      });
+
+      if (error) throw error;
+
+      if (data?.redirectUrl) {
+        onOpenChange(false);
+        window.location.assign(data.redirectUrl);
+        return;
+      }
+
+      if (data?.message) {
+        toast.success(data.message);
+      } else {
+        toast.success("Pedido de pagamento criado. Siga as instruções no seu telemóvel.");
+      }
+
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err?.message || `Falha ao iniciar pagamento via ${method.toUpperCase()}.`);
+    } finally {
+      setLoadingMethod(null);
+    }
   };
 
   return (
@@ -78,58 +95,67 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* ✅ Dodo */}
+          {/* Visa/Mastercard */}
           <div className="w-full border rounded-md p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-foreground text-background flex items-center justify-center font-bold">
-                D
-              </div>
-              <div>
-                <div className="font-semibold">Pagar AGORAA</div>
-                <div className="text-xs text-muted-foreground">
-                  Checkout externo (cartão, etc.)
-                </div>
-              </div>
+            <div className="font-semibold mb-1">Visa / Mastercard</div>
+            <div className="text-xs text-muted-foreground mb-3">
+              Pagamento seguro por gateway (sem expor dados sensíveis no frontend).
             </div>
-
-            <Button className="w-full" onClick={handleCheckout}>
-              Ir para o checkout
-              <ExternalLink className="w-4 h-4 ml-2" />
+            <Button className="w-full" onClick={startCardCheckout} disabled={!!loadingMethod}>
+              {loadingMethod === "card" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  A abrir checkout...
+                </>
+              ) : (
+                "Pagar com cartão"
+              )}
             </Button>
           </div>
 
+          {/* M-Pesa / eMola */}
           <div className="w-full border rounded-md p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-semibold">M-Pesa / eMola (Moçambique)</div>
-                <div className="text-xs text-muted-foreground">
-                  Pagamento manual com confirmação por WhatsApp
-                </div>
-              </div>
+            <div className="flex items-center gap-2 font-semibold mb-1">
+              <Smartphone className="w-4 h-4" /> M-Pesa / eMola
             </div>
-
-            <div className="text-sm mb-3">
-              Número de recebimento: <strong>{MOZ_PAYMENT_NUMBER}</strong>
+            <div className="text-xs text-muted-foreground mb-3">
+              Pagamento iniciado no backend. O número de recebimento não é exposto no app.
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Button variant="outline" onClick={copyMozNumber}>
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar número
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={() => startMobileMoneyPayment("mpesa")}
+                disabled={!!loadingMethod}
+              >
+                {loadingMethod === "mpesa" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    A processar...
+                  </>
+                ) : (
+                  "Pagar com M-Pesa"
+                )}
               </Button>
-              <Button onClick={openWhatsAppConfirmation}>
-                Confirmar no WhatsApp
-                <ExternalLink className="w-4 h-4 ml-2" />
+              <Button
+                variant="outline"
+                onClick={() => startMobileMoneyPayment("emola")}
+                disabled={!!loadingMethod}
+              >
+                {loadingMethod === "emola" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    A processar...
+                  </>
+                ) : (
+                  "Pagar com eMola"
+                )}
               </Button>
             </div>
           </div>
 
           <div className="pt-4 border-t">
             <p className="text-xs text-center text-muted-foreground">
-              🔒 Pagamento seguro. Seus dados são criptografados.
+              🔒 Pagamentos via backend com credenciais em variáveis seguras.
             </p>
           </div>
         </div>

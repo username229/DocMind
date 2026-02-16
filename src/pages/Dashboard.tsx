@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Brain, Plus, LogOut, FileText, Crown, Search, Star } from 'lucide-react';
+import { Brain, Plus, LogOut, FileText, Crown, Search, Star, Trash2, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DocumentList } from '@/components/document/DocumentList';
@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'processing' | 'error' | 'pending'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'favorites'>('newest');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -165,6 +166,43 @@ export default function Dashboard() {
 
     setFavorites(next);
     localStorage.setItem(`docmind:favorites:${user.id}`, JSON.stringify(next));
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const selectAllFiltered = () => {
+    setSelectedIds(filteredDocuments.map((d) => d.id));
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
+  const bulkFavorite = () => {
+    if (!user || selectedIds.length === 0) return;
+
+    const merged = Array.from(new Set([...favorites, ...selectedIds]));
+    setFavorites(merged);
+    localStorage.setItem(`docmind:favorites:${user.id}`, JSON.stringify(merged));
+    toast.success(`${selectedIds.length} documento(s) favoritado(s).`);
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const confirmed = window.confirm(`Excluir ${selectedIds.length} documento(s) selecionado(s)?`);
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase.from('documents').delete().in('id', selectedIds);
+      if (error) throw error;
+
+      setDocuments((prev) => prev.filter((doc) => !selectedIds.includes(doc.id)));
+      setSelectedIds([]);
+      toast.success('Documentos excluídos.');
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Falha ao excluir documentos selecionados.');
+    }
   };
 
   const isPro = profile?.plan === 'pro';
@@ -324,6 +362,43 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Bulk actions */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={selectAllFiltered}>
+              <CheckSquare className="w-4 h-4 mr-2" />
+              Selecionar visíveis
+            </Button>
+            <Button variant="outline" size="sm" onClick={clearSelection} disabled={selectedIds.length === 0}>
+              Limpar seleção
+            </Button>
+            <Button variant="outline" size="sm" onClick={bulkFavorite} disabled={selectedIds.length === 0}>
+              <Star className="w-4 h-4 mr-2" />
+              Favoritar selecionados
+            </Button>
+            <Button variant="destructive" size="sm" onClick={bulkDelete} disabled={selectedIds.length === 0}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir selecionados ({selectedIds.length})
+            </Button>
+          </div>
+
+          {/* Pinned & recent */}
+          {documents.length > 0 && (
+            <div className="mb-6 rounded-xl border border-border bg-card p-4">
+              <p className="text-sm font-medium mb-2">Acesso rápido</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(documents
+                  .slice()
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 4)
+                ).map((doc) => (
+                  <Link key={doc.id} to={`/dashboard/document/${doc.id}`} className="text-sm rounded-md border px-3 py-2 hover:bg-muted transition-colors">
+                    <span className="font-medium">{doc.title}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Discovery tools */}
           <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Star className="w-3 h-3 text-amber-500" />
@@ -372,6 +447,8 @@ export default function Dashboard() {
             onRename={handleRename}
             onDuplicate={handleDuplicate}
             favorites={favorites}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
             onToggleFavorite={toggleFavorite}
           />
         </motion.div>

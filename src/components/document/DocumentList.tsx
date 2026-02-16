@@ -20,10 +20,12 @@ interface DocumentListProps {
   onRename: (id: string, currentTitle: string) => void;
   onDuplicate: (id: string) => void;
   favorites: string[];
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
   onToggleFavorite: (id: string) => void;
 }
 
-export function DocumentList({ documents, onDelete, onRename, onDuplicate, favorites, onToggleFavorite }: DocumentListProps) {
+export function DocumentList({ documents, onDelete, onRename, onDuplicate, favorites, selectedIds, onToggleSelect, onToggleFavorite }: DocumentListProps) {
   if (documents.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-12 text-center">
@@ -58,6 +60,13 @@ export function DocumentList({ documents, onDelete, onRename, onDuplicate, favor
           className="glass-card rounded-xl p-4 hover:shadow-md transition-all group"
         >
           <div className="flex items-center gap-4">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(doc.id)}
+              onChange={() => onToggleSelect(doc.id)}
+              className="h-4 w-4"
+              title="Selecionar"
+            />
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
               <FileText className="w-6 h-6 text-primary" />
             </div>
@@ -88,7 +97,7 @@ export function DocumentList({ documents, onDelete, onRename, onDuplicate, favor
               </div>
             </div>
 
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="icon"

@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, Clock, ChevronRight, Trash2, Star, Share2 } from 'lucide-react';
+import { FileText, Clock, ChevronRight, Trash2, Star, Share2, Pencil, CopyPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -11,16 +11,19 @@ interface Document {
   status: string;
   created_at: string;
   summary: string | null;
+  original_content?: string | null;
 }
 
 interface DocumentListProps {
   documents: Document[];
   onDelete: (id: string) => void;
+  onRename: (id: string, currentTitle: string) => void;
+  onDuplicate: (id: string) => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
 }
 
-export function DocumentList({ documents, onDelete, favorites, onToggleFavorite }: DocumentListProps) {
+export function DocumentList({ documents, onDelete, onRename, onDuplicate, favorites, onToggleFavorite }: DocumentListProps) {
   if (documents.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-12 text-center">
@@ -96,6 +99,28 @@ export function DocumentList({ documents, onDelete, favorites, onToggleFavorite 
                 title="Favoritar"
               >
                 <Star className={`w-4 h-4 ${favorites.includes(doc.id) ? 'text-amber-500 fill-amber-500' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onRename(doc.id, doc.title);
+                }}
+                title="Renomear"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDuplicate(doc.id);
+                }}
+                title="Duplicar"
+              >
+                <CopyPlus className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"

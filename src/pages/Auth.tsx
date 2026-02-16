@@ -145,13 +145,18 @@ export default function Auth() {
   };
 
   const handleSocialLogin = async (provider: SocialProvider) => {
+    if (!isSupabaseConfigured) {
+      toast.error('Configuração do servidor incompleta. Contacte o suporte.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await signInWithProvider(provider);
 
       if (error) {
-        toast.error('Erro ao fazer login com Google');
+        toast.error(error.message || 'Erro ao fazer login com Google');
       }
     } catch {
       toast.error('Erro inesperado ao fazer login');
@@ -196,7 +201,7 @@ export default function Auth() {
   ======================= */
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Left side */}
       <div className="flex-1 flex items-center justify-center p-8">
         <motion.div
@@ -213,8 +218,8 @@ export default function Auth() {
           </Link>
 
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <Brain className="w-6 h-6 text-primary-foreground" />
+            <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center">
+              <Brain className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">DocMind</h1>
@@ -362,8 +367,8 @@ export default function Auth() {
       </div>
 
       {/* Right side */}
-      <div className="hidden lg:flex flex-1 bg-gradient-primary items-center justify-center p-8">
-        <div className="text-center text-primary-foreground max-w-md">
+      <div className="hidden lg:flex flex-1 bg-slate-900 items-center justify-center p-8">
+        <div className="text-center text-white max-w-md">
           <Brain className="w-16 h-16 mx-auto mb-6" />
           <h2 className="text-3xl font-bold mb-4">
             Transforme seus documentos com IA

@@ -78,7 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithProvider = async (provider: Provider) => {
     if (!isSupabaseConfigured) return { error: configError };
 
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    // Keep callback on auth page to reduce redirect mismatch issues.
+    const redirectUrl = `${window.location.origin}/auth`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,

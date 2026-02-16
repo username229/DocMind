@@ -76,13 +76,13 @@ const Index = () => {
         alternates={makeAlternatesHome()}
       />
 
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+      <div className="min-h-screen bg-slate-50">
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between h-16">
               <Link to="/" className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center">
                   <Brain className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-slate-900">DocMind</span>
@@ -139,7 +139,7 @@ const Index = () => {
 
             <h1 className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 leading-tight">
               {t("heroTitle1")}{" "}
-              <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              <span className="text-slate-900 underline decoration-indigo-600 decoration-4 underline-offset-4">
                 {t("heroTitle2")}
               </span>{" "}
               {t("heroTitle3")}
@@ -153,7 +153,7 @@ const Index = () => {
               <Button
                 asChild
                 size="lg"
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-200 h-14 px-8 text-lg"
+                className="bg-slate-900 hover:bg-slate-800 text-white shadow-sm h-14 px-8 text-lg"
               >
                 <Link to="/auth">
                   <Zap className="w-5 h-5" />
@@ -353,7 +353,7 @@ const Index = () => {
               {/* Pro Plan */}
               <div className="bg-white rounded-3xl p-8 ring-2 ring-indigo-500 shadow-xl relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                  <span className="bg-slate-900 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1">
                     <Crown className="w-4 h-4" /> {t("mostPopular")}
                   </span>
                 </div>
@@ -388,7 +388,7 @@ const Index = () => {
                 </ul>
                 <Button
                   size="lg"
-                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white"
                   onClick={() => handleSubscribe("pro")}
                   asChild={!user}
                 >
@@ -403,7 +403,7 @@ const Index = () => {
         <footer className="py-12 border-t border-slate-200 bg-white">
           <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
                 <Brain className="w-4 h-4 text-white" />
               </div>
               <span className="text-lg font-bold text-slate-900">DocMind</span>

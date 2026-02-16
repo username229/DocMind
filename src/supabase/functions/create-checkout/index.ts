@@ -9,16 +9,32 @@ const corsHeaders = {
 
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
-  console.log(`[CREATE-CHECKOUT/DODO] ${step}${detailsStr}`);
+  console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
-// ✅ Links Dodo (com redirect_url)
-const DODO_LINKS = {
-  standard:
-    "https://checkout.dodopayments.com/buy/pdt_0NXBlp8QKAqSCyBOwvAbB?quantity=1&redirect_url=https://docmind.co",
-  pro:
-    "https://checkout.dodopayments.com/buy/pdt_0NXCGSxnwR3uZ3A897lLH?quantity=1&redirect_url=https://docmind.co",
-} as const;
+const getCheckoutUrls = () => {
+  const provider = (Deno.env.get("CARD_PROVIDER") || "dodo").toLowerCase();
+
+  // Keep provider URLs in Supabase secrets, never hardcoded.
+  const dodo = {
+    standard: Deno.env.get("DODO_CHECKOUT_STANDARD_URL") || "",
+    pro: Deno.env.get("DODO_CHECKOUT_PRO_URL") || "",
+  };
+
+  const flutterwave = {
+    standard: Deno.env.get("FLW_CHECKOUT_STANDARD_URL") || "",
+    pro: Deno.env.get("FLW_CHECKOUT_PRO_URL") || "",
+  };
+
+  const paystack = {
+    standard: Deno.env.get("PAYSTACK_CHECKOUT_STANDARD_URL") || "",
+    pro: Deno.env.get("PAYSTACK_CHECKOUT_PRO_URL") || "",
+  };
+
+  if (provider === "flutterwave") return { provider, ...flutterwave };
+  if (provider === "paystack") return { provider, ...paystack };
+  return { provider: "dodo", ...dodo };
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -28,7 +44,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // 1) Validar usuário via token
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -59,12 +74,8 @@ serve(async (req) => {
       });
     }
 
-    logStep("User authenticated", { userId: userData.user.id, email: userData.user.email });
-
-    // 2) Ler body (aceita plan/billingPeriod, mas billingPeriod será ignorado)
     const body = await req.json().catch(() => ({}));
     const plan = String(body.plan || "").toLowerCase();
-    // const billingPeriod = String(body.billingPeriod || "").toLowerCase(); // (ignorado no Dodo)
 
     if (plan !== "standard" && plan !== "pro") {
       return new Response(JSON.stringify({ error: "Invalid plan. Use standard|pro" }), {
@@ -73,10 +84,22 @@ serve(async (req) => {
       });
     }
 
-    const url = plan === "pro" ? DODO_LINKS.pro : DODO_LINKS.standard;
+    const { provider, standard, pro } = getCheckoutUrls();
+    const url = plan === "pro" ? pro : standard;
 
-    // 3) Retornar URL para o frontend redirecionar
-    return new Response(JSON.stringify({ url }), {
+    if (!url) {
+      return new Response(
+        JSON.stringify({
+          error: `Card checkout URL not configured for provider '${provider}' and plan '${plan}'.`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify({ url, provider }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

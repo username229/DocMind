@@ -1,8 +1,9 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, Clock, ChevronRight, Trash2 } from 'lucide-react';
+import { FileText, Clock, ChevronRight, Trash2, Star, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface Document {
   id: string;
@@ -15,9 +16,11 @@ interface Document {
 interface DocumentListProps {
   documents: Document[];
   onDelete: (id: string) => void;
+  favorites: string[];
+  onToggleFavorite: (id: string) => void;
 }
 
-export function DocumentList({ documents, onDelete }: DocumentListProps) {
+export function DocumentList({ documents, onDelete, favorites, onToggleFavorite }: DocumentListProps) {
   if (documents.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-12 text-center">
@@ -37,6 +40,12 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
       </div>
     );
   }
+
+  const copyShareLink = async (id: string) => {
+    const url = `${window.location.origin}/dashboard/document/${id}`;
+    await navigator.clipboard.writeText(url);
+    toast.success('Link do documento copiado!');
+  };
 
   return (
     <div className="space-y-3">
@@ -76,7 +85,29 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onToggleFavorite(doc.id);
+                }}
+                title="Favoritar"
+              >
+                <Star className={`w-4 h-4 ${favorites.includes(doc.id) ? 'text-amber-500 fill-amber-500' : ''}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  copyShareLink(doc.id);
+                }}
+                title="Copiar link"
+              >
+                <Share2 className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -85,10 +116,11 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                   onDelete(doc.id);
                 }}
                 className="text-destructive hover:text-destructive"
+                title="Excluir"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
-              <Button asChild variant="ghost" size="icon">
+              <Button asChild variant="ghost" size="icon" title="Abrir">
                 <Link to={`/dashboard/document/${doc.id}`}>
                   <ChevronRight className="w-4 h-4" />
                 </Link>

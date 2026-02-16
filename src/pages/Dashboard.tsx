@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Brain, Plus, LogOut, FileText, Crown, Search } from 'lucide-react';
+import { Brain, Plus, LogOut, FileText, Crown, Search, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DocumentList } from '@/components/document/DocumentList';
@@ -32,7 +32,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'processing' | 'error' | 'pending'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'favorites'>('newest');
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -43,6 +44,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchData();
+      const saved = localStorage.getItem(`docmind:favorites:${user.id}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setFavorites(parsed);
+        } catch {
+          // ignore parse errors
+        }
+      }
     }
   }, [user]);
 
@@ -99,6 +109,17 @@ export default function Dashboard() {
     navigate('/');
   };
 
+  const toggleFavorite = (id: string) => {
+    if (!user) return;
+
+    const next = favorites.includes(id)
+      ? favorites.filter((x) => x !== id)
+      : [...favorites, id];
+
+    setFavorites(next);
+    localStorage.setItem(`docmind:favorites:${user.id}`, JSON.stringify(next));
+  };
+
   const isPro = profile?.plan === 'pro';
   const docsThisMonth = documents.length;
   const freeLimit = 5;
@@ -121,8 +142,17 @@ export default function Dashboard() {
       return [...byFilter].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     }
 
+    if (sortBy === 'favorites') {
+      return [...byFilter].sort((a, b) => {
+        const aFav = favorites.includes(a.id) ? 1 : 0;
+        const bFav = favorites.includes(b.id) ? 1 : 0;
+        if (aFav !== bFav) return bFav - aFav;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    }
+
     return [...byFilter].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [documents, search, statusFilter, sortBy]);
+  }, [documents, search, statusFilter, sortBy, favorites]);
 
   if (authLoading || loading) {
     return (
@@ -221,6 +251,10 @@ export default function Dashboard() {
           )}
 
           {/* Discovery tools */}
+          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <Star className="w-3 h-3 text-amber-500" />
+            {favorites.length} favorito(s) salvos neste dispositivo
+          </div>
           <div className="mb-6 grid gap-3 md:grid-cols-3">
             <div className="relative md:col-span-2">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -252,12 +286,18 @@ export default function Dashboard() {
                 <option value="newest">Mais novos</option>
                 <option value="oldest">Mais antigos</option>
                 <option value="title">A-Z</option>
+                <option value="favorites">Favoritos primeiro</option>
               </select>
             </div>
           </div>
 
           {/* Document list */}
-          <DocumentList documents={filteredDocuments} onDelete={handleDelete} />
+          <DocumentList
+            documents={filteredDocuments}
+            onDelete={handleDelete}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+          />
         </motion.div>
       </main>
     </div>

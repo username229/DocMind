@@ -5,13 +5,18 @@ import type { Database } from './types'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Supabase environment variables are missing')
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
+
+if (!isSupabaseConfigured) {
+  console.warn('[DocMind] Supabase env vars missing (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Auth and data features are disabled until configured.')
 }
 
+const FALLBACK_SUPABASE_URL = 'https://example.supabase.co'
+const FALLBACK_SUPABASE_ANON_KEY = 'public-anon-key-placeholder'
+
 export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
+  isSupabaseConfigured ? SUPABASE_URL : FALLBACK_SUPABASE_URL,
+  isSupabaseConfigured ? SUPABASE_ANON_KEY : FALLBACK_SUPABASE_ANON_KEY,
   {
     auth: {
       storage: localStorage,

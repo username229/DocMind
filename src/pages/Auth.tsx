@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 
 /* =======================
@@ -63,6 +63,12 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isSupabaseConfigured) {
+      toast.error('Configuração do servidor incompleta. Contacte o suporte.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -216,6 +222,12 @@ export default function Auth() {
             </div>
           </div>
 
+          {!isSupabaseConfigured && (
+            <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              Configuração incompleta: defina <strong>VITE_SUPABASE_URL</strong> e <strong>VITE_SUPABASE_ANON_KEY</strong> para ativar cadastro/login.
+            </div>
+          )}
+
           {(mode === 'login' || mode === 'signup') && (
             <div className="space-y-3 mb-6">
               <Button
@@ -224,7 +236,7 @@ export default function Auth() {
                 size="lg"
                 className="w-full"
                 onClick={() => handleSocialLogin('google')}
-                disabled={loading}
+                disabled={loading || !isSupabaseConfigured}
               >
                 Continuar com Google
               </Button>
@@ -303,7 +315,7 @@ export default function Auth() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !isSupabaseConfigured}>
               {getButtonText()}
             </Button>
           </form>

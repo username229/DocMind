@@ -1,4 +1,4 @@
-import { CreditCard, ExternalLink } from "lucide-react";
+import { Copy, CreditCard, ExternalLink, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -30,6 +30,8 @@ const DODO_LINKS: Record<"standard" | "pro", string> = {
     "https://checkout.dodopayments.com/buy/pdt_0NXCGSxnwR3uZ3A897lLH?quantity=1&redirect_url=https://docmind.co",
 };
 
+const MOZ_PAYMENT_NUMBER = "258842206751";
+
 export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: PaymentModalProps) {
   const { formatPriceFromMZN } = useLanguage();
 
@@ -43,6 +45,22 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
     // fecha o modal e redireciona para o checkout do Dodo
     onOpenChange(false);
     window.location.href = checkoutUrl;
+  };
+
+  const copyMozNumber = async () => {
+    try {
+      await navigator.clipboard.writeText(MOZ_PAYMENT_NUMBER);
+      alert("Número copiado: " + MOZ_PAYMENT_NUMBER);
+    } catch {
+      alert("Não foi possível copiar automaticamente. Use: " + MOZ_PAYMENT_NUMBER);
+    }
+  };
+
+  const openWhatsAppConfirmation = () => {
+    const message = encodeURIComponent(
+      `Olá, paguei o plano ${plan.toUpperCase()} (${formattedPrice}${periodLabel}) via M-Pesa/eMola para ${MOZ_PAYMENT_NUMBER}. Segue o comprovativo.`
+    );
+    window.open(`https://wa.me/${MOZ_PAYMENT_NUMBER}?text=${message}`, "_blank");
   };
 
   return (
@@ -78,6 +96,35 @@ export function PaymentModal({ open, onOpenChange, plan, billingPeriod }: Paymen
               Ir para o checkout
               <ExternalLink className="w-4 h-4 ml-2" />
             </Button>
+          </div>
+
+          <div className="w-full border rounded-md p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-semibold">M-Pesa / eMola (Moçambique)</div>
+                <div className="text-xs text-muted-foreground">
+                  Pagamento manual com confirmação por WhatsApp
+                </div>
+              </div>
+            </div>
+
+            <div className="text-sm mb-3">
+              Número de recebimento: <strong>{MOZ_PAYMENT_NUMBER}</strong>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button variant="outline" onClick={copyMozNumber}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar número
+              </Button>
+              <Button onClick={openWhatsAppConfirmation}>
+                Confirmar no WhatsApp
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           </div>
 
           <div className="pt-4 border-t">
